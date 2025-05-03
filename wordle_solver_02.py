@@ -105,7 +105,13 @@ def solve():
     word_vector = [set(string.ascii_lowercase) for _ in range(WORD_LENGTH)]
     for attempt in range(1, ALLOWED_ATTEMPTS + 1):
         print(f"Attempt {attempt} with {len(possible_words)} possible words")
-        display_word_table(sort_by_word_commonality(possible_words)[:32])
+
+        ranked_words = sort_by_word_commonality(possible_words)
+        top_guess = ranked_words[0]
+        print(f"Suggested guess: {top_guess[0]}  (score: {top_guess[1]:.2f})")
+
+        display_word_table(ranked_words[:32])
+
         word = input_word()
         response = input_response()
         for idx, letter in enumerate(response):
@@ -132,4 +138,5 @@ def solve():
         print(word_vector)
 
 
-solve()
+if __name__ == "__main__":
+    solve()

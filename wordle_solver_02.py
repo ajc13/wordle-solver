@@ -38,15 +38,11 @@ LETTER_FREQUENCY = {
 }
 
 
-
-
 def calculate_word_commonality(word):
     score = 0.0
     for char in word:
         score += LETTER_FREQUENCY[char]
     return score / (WORD_LENGTH - len(set(word)) + 1)
-
-
 
 
 def sort_by_word_commonality(words):
@@ -58,13 +54,9 @@ def sort_by_word_commonality(words):
     )
 
 
-
-
 def display_word_table(word_commonalities):
     for word, freq in word_commonalities:
         print(f"{word:<10} | {freq:<5.2}")
-
-
 
 
 def input_word():
@@ -72,11 +64,9 @@ def input_word():
         word = input("Input the word you entered> ")
         print(word, len(word), word.lower() in WORDS)
         if len(word) == WORD_LENGTH and word.lower() in WORDS:
-            print(f"{word:<10} | {calculate_word_commonality(word):<5.2}") 
+            print(f"{word:<10} | {calculate_word_commonality(word):<5.2}")
             break
     return word.lower()
-
-
 
 
 def input_response():
@@ -98,8 +88,6 @@ def input_response():
     return response
 
 
-
-
 def match_word_vector(word, word_vector):
     assert len(word) == len(word_vector)
     for letter, v_letter in zip(word, word_vector):
@@ -108,12 +96,8 @@ def match_word_vector(word, word_vector):
     return True
 
 
-
-
 def match(word_vector, possible_words):
     return [word for word in possible_words if match_word_vector(word, word_vector)]
-
-
 
 
 def solve():
@@ -144,8 +128,6 @@ def solve():
                         pass
         possible_words = match(word_vector, possible_words)
         print(word_vector)
-
-
 
 
 solve()

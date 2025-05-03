@@ -102,6 +102,7 @@ def match(word_vector, possible_words):
 
 def solve():
     possible_words = WORDS.copy()
+
     word_vector = [set(string.ascii_lowercase) for _ in range(WORD_LENGTH)]
     for attempt in range(1, ALLOWED_ATTEMPTS + 1):
         print(f"Attempt {attempt} with {len(possible_words)} possible words")
@@ -110,7 +111,7 @@ def solve():
         top_guess = ranked_words[0]
         print(f"Suggested guess: {top_guess[0]}  (score: {top_guess[1]:.2f})")
 
-        display_word_table(ranked_words[:32])
+        display_word_table(ranked_words[:10])
 
         word = input_word()
         response = input_response()
@@ -120,15 +121,17 @@ def solve():
             elif letter == "Y":
                 # Filter down to words that contain the letter but not at this position
                 possible_words = [
-                    w for w in possible_words
-                    if word[idx] in w and w[idx] != word[idx]
+                    w for w in possible_words if word[idx] in w and w[idx] != word[idx]
                 ]
                 try:
                     word_vector[idx].remove(word[idx])
                 except KeyError:
                     pass
-    
+
             elif letter == "?":
+                # TODO: Improve logic to handle duplicate letters correctly.
+                # This removes all instances of a gray letter, which is wrong if that letter also got a green/yellow elsewhere in the same guess.
+
                 for vector in word_vector:
                     try:
                         vector.remove(word[idx])

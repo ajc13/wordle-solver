@@ -112,14 +112,16 @@ def solve():
             if letter == "G":
                 word_vector[idx] = {word[idx]}
             elif letter == "Y":
-                possible_words_Y = possible_words.copy()
-                for possible_word in possible_words_Y:
-                    if word[idx] not in possible_word:
-                        possible_words.remove(possible_word)
+                # Filter down to words that contain the letter but not at this position
+                possible_words = [
+                    w for w in possible_words
+                    if word[idx] in w and w[idx] != word[idx]
+                ]
                 try:
                     word_vector[idx].remove(word[idx])
                 except KeyError:
                     pass
+    
             elif letter == "?":
                 for vector in word_vector:
                     try:

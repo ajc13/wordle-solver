@@ -1,27 +1,18 @@
 # wordl_solver.py
 
 ################################################################################
-import string
-
-from pathlib import Path
-
+import requests
+import certifi
+from bs4 import BeautifulSoup
+import re
 from collections import Counter
-from itertools import chain
-
-import operator
-
 from pathlib import Path
-
 from datetime import datetime, timedelta
 
+import string
+import operator
 import urllib.request
-
-import requests
-from bs4 import BeautifulSoup
-
-import certifi
-
-import re
+from itertools import chain
 
 ################################################################################
 # Configuration

@@ -1,40 +1,37 @@
-# Wordle Solver
+# Wordle Solver (WSL-Optimized)
 
-A terminal-based Wordle solver written in Python. Uses letter frequency analysis and interactive feedback to narrow down guesses and help solve puzzles efficiently.
+## This project provides a terminal-based Wordle solver that:
+- Works in Hard Mode
+- Avoids past NYT answers
+- Prioritizes statistical optimization to reduce average solve count
+- Runs cleanly in a WSL environment with dynamic word list fetching
 
-## Features
+## Requirements:
+- Python 3.x
+- Internet access (for word list download)
 
-- Supports interactive input (`G`, `Y`, `?` for feedback)
-- Scores guesses by letter frequency
-- Loads from a curated 5-letter word list
-- Compatible with Python 3 (Linux, macOS, Pythonista on iOS)
+## Install dependencies (if needed):
+pip install -r requirements.txt
 
-## Requirements
+## Project Structure:
+- wordle_solver.py     : Main solver logic
+- nyt-answers.txt      : Fetched answer list (auto-created)
+- .gitignore           : Ignores word lists and logs
+- README.md            : This file
+- TODO.md              : Task and planning list
 
-- Python 3.6+
-- `5_letter_words` file in the same directory
+## Word List Management:
+- Static word lists are not tracked in Git
+- nyt-answers.txt is pulled from FiveForks.com and used to filter past solutions
+- If not present, it will be auto-fetched
 
-## Usage
+## Run solver:
+python3 wordle_solver.py
 
-```bash
-python3 wordle_solver_02.py
-```
-
-You will be prompted to:
-
-1. Enter your guessed word  
-2. Enter Wordle's feedback using:  
-   - `G` for green  
-   - `Y` for yellow  
-   - `?` for gray  
-
-## Refreshing Word List
-
-To fetch the latest word list from a reliable source:
-
-```bash
-curl -o 5_letter_words https://raw.githubusercontent.com/tabatkins/wordle-list/main/words
-```
+## Features:
+- First guess uses optimized eliminators (SOARE, AUDIO, etc.)
+- Solver respects Hard Mode logic (green locks, yellow repositions, grey eliminates)
+- Answers are filtered against official NYT list, if retrieved  (no repeats)
 
 ## Roadmap
 

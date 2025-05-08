@@ -1,6 +1,16 @@
 # wordl_solver.py
 
 ################################################################################
+# This script is a Wordle solver that uses a list of valid words and past answers
+# to suggest the best guesses based on letter frequency and user input.
+# It scrapes the past answers from a website and uses them to filter out known solutions.
+# The script also allows the user to input their guesses and the corresponding feedback
+# (green, yellow, gray) to narrow down the possible words.
+################################################################################
+
+################################################################################
+# Imports
+################################################################################
 import requests
 import certifi
 from bs4 import BeautifulSoup
@@ -39,13 +49,10 @@ def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
             ),
-            "Accept": "*/*"
+            "Accept": "*/*",
         }
         resp = requests.get(
-            FIVEFORKS_URL,
-            headers=headers,
-            verify=verify_path,
-            timeout=10
+            FIVEFORKS_URL, headers=headers, verify=verify_path, timeout=10
         )
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")

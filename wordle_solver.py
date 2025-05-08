@@ -1,6 +1,6 @@
-# solver
+# wordl_solver.py
 
-
+################################################################################
 import string
 
 from pathlib import Path
@@ -16,20 +16,69 @@ from datetime import datetime, timedelta
 
 import urllib.request
 
+import requests
+from bs4 import BeautifulSoup
+
+import certifi
+
+import re
+
+################################################################################
 # Configuration
 WORD_LIST_URL = "https://raw.githubusercontent.com/tabatkins/wordle-list/main/words"
-USED_LIST_URL = (
-    "https://raw.githubusercontent.com/tabatkins/wordle-list/main/solutions.txt"
-)
 
-WORD_LIST_FILE = "5_letter_words.txt"
-USED_LIST_FILE = "nyt_used_words.txt"
+FIVEFORKS_URL = "https://www.fiveforks.com/wordle/"
+
+WORD_LIST_FILE = "valid_word_list.txt"
+USED_LIST_FILE = "used_word_list.txt"
 
 MAX_AGE_DAYS = 7
 
 ALLOWABLE_CHARACTERS = set(string.ascii_letters)
 ALLOWED_ATTEMPTS = 6
 WORD_LENGTH = 5
+
+
+################################################################################
+def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
+    def _attempt_scrape(verify_ssl=True):
+        verify_path = certifi.where() if verify_ssl else False
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "Accept": "*/*"
+        }
+        resp = requests.get(
+            FIVEFORKS_URL,
+            headers=headers,
+            verify=verify_path,
+            timeout=10
+        )
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        alphalist_div = soup.find("div", id="alphalist")
+        if not alphalist_div:
+            raise ValueError("Could not find #alphalist block in HTML.")
+
+        # Extract all 5-letter uppercase words (ignore counts)
+        matches = re.findall(r"\b([A-Z]{5})\b", alphalist_div.get_text())
+        return [word.lower() for word in sorted(set(matches))]
+
+    print(f"Scraping past answers from {FIVEFORKS_URL}...")
+    try:
+        words = _attempt_scrape(verify_ssl=True)
+    except requests.exceptions.SSLError:
+        print("⚠️  SSL verification failed — retrying with verification disabled...")
+        words = _attempt_scrape(verify_ssl=False)
+    except Exception as e:
+        print(f"⚠️  Failed to scrape answers: {e}")
+        return
+
+    with open(file_path, "w") as f:
+        f.write("\n".join(words) + "\n")
+    print(f"✅ Saved {len(words)} used answers to {file_path}")
 
 
 def file_older_than(path: str, days: int) -> bool:
@@ -56,7 +105,9 @@ def refresh_file_if_needed(file_path: str, url: str, force: bool = False):
 
 def refresh_word_lists(force_wordlist=False, force_used=False):
     refresh_file_if_needed(WORD_LIST_FILE, WORD_LIST_URL, force_wordlist)
-    refresh_file_if_needed(USED_LIST_FILE, USED_LIST_URL, force_used)
+
+    if force_used or file_older_than(USED_LIST_FILE, MAX_AGE_DAYS):
+        fetch_used_words_from_fiveforks(USED_LIST_FILE)
 
 
 def load_words():

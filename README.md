@@ -1,4 +1,4 @@
-# Wordle Solver (WSL-Optimized)
+# Wordle Solver
 
 ## This project provides a terminal-based Wordle solver that:
 - Works in Hard Mode
@@ -15,24 +15,25 @@ pip install -r requirements.txt
 
 ## Project Structure:
 - wordle_solver.py     : Main solver logic
-- nyt-answers.txt      : Fetched answer list (auto-created)
+- 5_letter_words.txt   : Fetched valid word list (tabatkins)
+- nyt-answers.txt      : Fetched past answer list (fiveforks)
 - .gitignore           : Ignores word lists and logs
 - README.md            : This file
 - TODO.md              : Task and planning list
 
 ## Word List Management:
 - Static word lists are not tracked in Git
-- nyt-answers.txt is pulled from FiveForks.com and used to filter past solutions
-- If not present, it will be auto-fetched
+- Lists are pulled/updated weekely
+- If not present, they will be auto-fetched
 
 ## Run solver:
 python3 wordle_solver.py
 
 ## Features:
-- First guess uses optimized eliminators (SOARE, AUDIO, etc.)
+- First guess offers optimized eliminators (SOARE, AUDIO, etc.)
 - Solver respects Hard Mode logic (green locks, yellow repositions, grey eliminates)
-- Answers are filtered against official NYT list, if retrieved  (no repeats)
+- Answers are filtered against past answer list, if retrieved  (no repeats)
 
 ## Roadmap
 
-See [`TODO`](./TODO.md) for planned features and enhancements.
+See [\`TODO\`](./TODO.md) for planned features and enhancements.

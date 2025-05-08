@@ -1,38 +1,39 @@
 # TODO
 
-## Word List Management
+## Core:
+- [x] Static word lists removed from version control
+- [x] .gitignore updated for dynamic lists and logs
+- [x] Answer fetch logic integrated into `wordle_solver.py`
+- [ ] Add "solved.log" to track completed games
+- [ ] Prevent resubmitting known past solutions
+- [ ] Option to override or bypass past-answer check
 
-- [ ] Script to refresh `5_letter_words` from tabatkins source
-- [ ] Auto-backup previous word list before overwriting
-- [ ] Parse and extract previously used NYT solutions into `nyt_used_words.txt`
-- [ ] Optionally exclude or de-rank used solutions
+## Optimization:
+- [x] Strategy shift to improve average solve count
+- [ ] Implement second-guess fallback suggestions
+- [ ] Score candidates by entropy or coverage value
+- [ ] Support wordlist weighting or adaptive filtering
 
-## Solver Improvements
+## Testing:
+- [ ] Add unit test coverage for filtering logic
+- [ ] Validate green/yellow/grey parsing edge cases
+- [ ] Add test harness for example puzzles or regression cases
 
-- [ ] Fix yellow logic to ensure letters aren't at the same index
-- [ ] Handle duplicate letters more accurately
-- [ ] Support non-interactive mode (preloaded guesses and responses)
-- [ ] Add score weight tuning based on letter position frequency
+## Docs:
+- [x] Rewrite README for current architecture
+- [ ] Add CLI usage help to `wordle_solver.py`
+- [ ] Add example walkthrough with screenshots or game logs
+- [ ] Add FAQ with strategy notes
 
-## CLI Features
+## CLI / UX:
+- [ ] Add `--easy` flag to disable hard mode logic
+- [ ] Add `--log` option to persist guess history
+- [ ] Add `--color` output support (via termcolor or rich)
+- [ ] Add `--day` or `--streak` flag to seed context
+- [ ] Export guess history to `CSV`
 
-- [ ] Add `--exclude-used` flag
-- [ ] Add `--max-guesses` limit override
-- [ ] Add `--wordlist <file>` option
-
-## Cross-Platform
-
-- [ ] Validate clean usage in Pythonista
-- [ ] Document setup for GitHub-to-iOS flow
-
-### Improve Scoring Strategy: Prioritize Information Gain
-
-- [ ] Refactor `calculate_word_commonality()` to use **information gain** logic
-  - Estimate how much each guess would **partition** the remaining word pool
-  - Score higher if a guess would eliminate more words *on average*, even if it's not a valid answer
-- [ ] Optionally use **per-letter position frequency**
-  - Some letters are more common at the start or end
-- [ ] Consider **dual-mode scoring**:
-  - Phase 1: Elimination — high-entropy guesses (e.g. `slate`, `roate`)
-  - Phase 2: Precision — guess from narrowed pool
-- [ ] Keep current scoring as fallback/simple mode
+## Nice-to-Have:
+- [ ] Daily streak and average tracker
+- [ ] Solve summary output for each run
+- [ ] Option to replay past puzzles locally
+- [ ] Interactive mode (Y/n prompts, hint reveal)

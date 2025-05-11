@@ -167,6 +167,9 @@ def input_word(WORDS, letter_freq, used_words=None):
 
         if word in {"r", "restart"}:
             return "CMD_RESTART"
+        
+        if word in {"?", "help"}:
+            return "CMD_HELP"
 
         print(word, len(word), word in WORDS)
 
@@ -245,7 +248,7 @@ def solve():
 
         ranked_words = sort_by_word_commonality(possible_words, LETTER_FREQUENCY)
         
-        print("+ / +n more | - / -n back | ^ reset.")
+        print("+ / +n more | - / -n back | ^ reset ")
 
         display_word_table(
            ranked_words[offset_start : offset_start + window_size],
@@ -276,6 +279,16 @@ def solve():
         if word == "CMD_RESTART":
             print("Restarting...")
             return solve()
+
+        if word == "CMD_HELP":
+            print("Help:")
+            print("  + / +n    Show next suggestions")
+            print("  - / -n    Show previous suggestions")
+            print("  ^         Reset to top of suggestion list")
+            print("  q / quit  Quit the solver")
+            print("  r / restart  Restart the session")
+            print("  . or ?    Gray response letter")
+            continue
 
         response = input_response()
 

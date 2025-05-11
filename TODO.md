@@ -26,9 +26,11 @@
 - [ ] Add FAQ or strategy notes
 
 ## CLI / UX
-- [ ] Add `--easy` flag to bypass hard mode logic
-- [ ] Add `--log` option to persist guess history
-- [ ] Add `--color` output (e.g., termcolor or rich)
+- [x] Add runtime paging with `+n`, `-n`, and `^`
+- [x] Add interactive quit (`q`) and restart (`r`) commands
+- [x] Support `.` as alias for gray (`?`) in response input
+- [ ] Add log rotation weekly (e.g., Mondays)
+- [ ] Add structured logging for guesses, responses, and metadata
 
 ## Nice-to-Have
 - [ ] Solve summary output for each run

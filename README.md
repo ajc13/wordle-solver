@@ -34,6 +34,17 @@ Note: .venv/ is excluded from version control (see .gitignore).
 python3 wordle_solver.py
 ```
 
+### Runtime Controls
+
+At the "Input the word you entered" prompt:
+
+- `+` or `+n` : Show next suggestions (in batches)
+- `-` or `-n` : Show previous suggestions
+- `^`         : Reset to top of suggestion list
+- `q` / `quit`: Quit the game
+- `r` / `restart`: Restart the current solver session
+- `?` / `help` : Show commands
+
 ### Optional CLI Flags
 
 - `--refresh` : Force-refresh the valid word list

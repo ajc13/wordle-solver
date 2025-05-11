@@ -167,7 +167,7 @@ def input_word(WORDS, letter_freq, used_words=None):
 
         if word in {"r", "restart"}:
             return "CMD_RESTART"
-        
+
         if word in {"?", "help"}:
             return "CMD_HELP"
 
@@ -247,20 +247,22 @@ def solve():
         print(f"Attempt {attempt} with {len(possible_words)} possible words")
 
         ranked_words = sort_by_word_commonality(possible_words, LETTER_FREQUENCY)
-        
+
         print("+ / +n more | - / -n back | ^ reset ")
 
         display_word_table(
-           ranked_words[offset_start : offset_start + window_size],
+            ranked_words[offset_start : offset_start + window_size],
             USED_WORDS,
-            start_index=offset_start
+            start_index=offset_start,
         )
 
         word = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS)
 
         if word.startswith("CMD_NEXT_"):
             step = int(word.split("_")[-1])
-            offset_start = min(offset_start + step, max(len(ranked_words) - window_size, 0))
+            offset_start = min(
+                offset_start + step, max(len(ranked_words) - window_size, 0)
+            )
             continue
 
         if word.startswith("CMD_PREV_"):
@@ -315,6 +317,11 @@ def solve():
                     except KeyError:
                         pass
         possible_words = match(word_vector, possible_words)
+
+        if not possible_words:
+            print("\n❌ No possible words remaining based on given feedback.")
+            print("❌ Double-check your inputs or consider restarting with 'r'.\n")
+
         print(word_vector)
 
 

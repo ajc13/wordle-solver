@@ -45,6 +45,10 @@ At the "Input the word you entered" prompt:
 - `r` / `restart`: Restart the current solver session
 - `?` / `help` : Show commands
 
+- You may enter '.' instead of '?' when entering gray feedback (e.g., G.Y??)
+
+- If no words remain due to feedback, you'll be prompted to restart
+
 ### Optional CLI Flags
 
 - `--refresh` : Force-refresh the valid word list

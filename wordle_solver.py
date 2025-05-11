@@ -221,7 +221,7 @@ def solve():
         top_guess = ranked_words[0]
         print(f"Suggested guess: {top_guess[0]}  (score: {top_guess[1]:.2f})")
 
-        display_word_table(ranked_words[:10])
+        display_word_table(ranked_words[:10], USED_WORDS)
 
         word = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS)
 

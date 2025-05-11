@@ -16,9 +16,17 @@ This terminal-based Wordle solver:
 
 ## Installation
 
+To set up the project locally:
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+This creates a local virtual environment named .venv and installs all required dependencies.
+
+Note: .venv/ is excluded from version control (see .gitignore).
 
 ## Run the Solver
 

@@ -19,6 +19,7 @@
 - [ ] Add test harness for simulated Wordle rounds or regression
 
 ## Docs
+- [x] Add virtualenv setup instructions to README under "Getting Started"
 - [x] Rewrite README for current structure
 - [x] Add CLI flag documentation to README
 - [ ] Add example walkthrough (screenshots or sample log)

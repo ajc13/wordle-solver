@@ -132,10 +132,10 @@ def sort_by_word_commonality(words, letter_freq):
     )
 
 
-def display_word_table(word_commonalities, used_words=None):
-    for word, freq in word_commonalities:
+def display_word_table(word_commonalities, used_words=None, start_index=0):
+    for i, (word, freq) in enumerate(word_commonalities, start=start_index + 1):
         mark = " 🔁" if used_words and word in used_words else ""
-        print(f"{word:<10} | {freq:<5.2}{mark}")
+        print(f"{i:>3}. {word:<10} | {freq:<5.2}{mark}")
 
 
 def input_word(WORDS, letter_freq, used_words=None):
@@ -144,6 +144,29 @@ def input_word(WORDS, letter_freq, used_words=None):
 
         if used_words and word in used_words:
             print("⚠️  Warning: This word is a known past NYT solution.")
+
+        if word.startswith("+"):
+            try:
+                n = int(word[1:]) if word[1:] else 10
+            except ValueError:
+                n = 10
+            return f"CMD_NEXT_{n}"
+
+        if word.startswith("-"):
+            try:
+                n = int(word[1:]) if word[1:] else 10
+            except ValueError:
+                n = 10
+            return f"CMD_PREV_{n}"
+
+        if word == "^":
+            return "CMD_RESET"
+
+        if word in {"q", "quit"}:
+            return "CMD_QUIT"
+
+        if word in {"r", "restart"}:
+            return "CMD_RESTART"
 
         print(word, len(word), word in WORDS)
 
@@ -154,13 +177,13 @@ def input_word(WORDS, letter_freq, used_words=None):
 
 
 def input_response():
-    print("Type the color-coded reply from Wordle:")
-    print("  G for Green")
-    print("  Y for Yellow")
-    print("  ? for Gray")
+    print("Color-coded reply:")
+    print("G for Green | Y for Yellow | ? for Gray")
+
     while True:
-        response = input("Response from Wordle> ")
-        response = response.upper()
+        raw = input("Response> ")
+        response = raw.strip().upper().replace(".", "?")
+
         if len(response) == WORD_LENGTH and set(response) <= {"G", "Y", "?"}:
             if response == "GGGGG":
                 print("Seems you are done!")
@@ -214,18 +237,48 @@ def solve():
 
     word_vector = [set(string.ascii_lowercase) for _ in range(WORD_LENGTH)]
 
+    offset_start = 0
+    window_size = 10
+
     for attempt in range(1, ALLOWED_ATTEMPTS + 1):
         print(f"Attempt {attempt} with {len(possible_words)} possible words")
 
         ranked_words = sort_by_word_commonality(possible_words, LETTER_FREQUENCY)
-        top_guess = ranked_words[0]
-        print(f"Suggested guess: {top_guess[0]}  (score: {top_guess[1]:.2f})")
+        
+        print("+ / +n more | - / -n back | ^ reset.")
 
-        display_word_table(ranked_words[:10], USED_WORDS)
+        display_word_table(
+           ranked_words[offset_start : offset_start + window_size],
+            USED_WORDS,
+            start_index=offset_start
+        )
 
         word = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS)
 
+        if word.startswith("CMD_NEXT_"):
+            step = int(word.split("_")[-1])
+            offset_start = min(offset_start + step, max(len(ranked_words) - window_size, 0))
+            continue
+
+        if word.startswith("CMD_PREV_"):
+            step = int(word.split("_")[-1])
+            offset_start = max(0, offset_start - step)
+            continue
+
+        if word == "CMD_RESET":
+            offset_start = 0
+            continue
+
+        if word == "CMD_QUIT":
+            print("Exiting.")
+            return
+
+        if word == "CMD_RESTART":
+            print("Restarting...")
+            return solve()
+
         response = input_response()
+
         for idx, letter in enumerate(response):
             if letter == "G":
                 word_vector[idx] = {word[idx]}

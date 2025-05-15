@@ -32,6 +32,7 @@
 - [ ] Add log rotation weekly (e.g., Mondays)
 - [ ] Add structured logging for guesses, responses, and metadata
 - [x] After 6 guesses, ask user if they want to continue instead of hard exit
+- [ ] Warn or suggest auto-submit when only one word remains
 
 ## Nice-to-Have
 - [ ] Solve summary output for each run

@@ -171,11 +171,10 @@ def input_word(WORDS, letter_freq, used_words=None):
         if word in {"?", "help"}:
             return "CMD_HELP"
 
-        print(word, len(word), word in WORDS)
-
         if len(word) == WORD_LENGTH and word in WORDS:
             print(f"{word:<10} | {calculate_word_commonality(word, letter_freq):<5.2}")
             break
+
     return word
 
 
@@ -243,7 +242,10 @@ def solve():
     offset_start = 0
     window_size = 10
 
-    for attempt in range(1, ALLOWED_ATTEMPTS + 1):
+    attempt = 1
+    override_attempts = 0
+
+    while attempt <= (ALLOWED_ATTEMPTS + override_attempts):
         print(f"Attempt {attempt} with {len(possible_words)} possible words")
 
         ranked_words = sort_by_word_commonality(possible_words, LETTER_FREQUENCY)
@@ -289,10 +291,23 @@ def solve():
             print("  ^         Reset to top of suggestion list")
             print("  q / quit  Quit the solver")
             print("  r / restart  Restart the session")
-            print("  . or ?    Gray response letter")
+            print("  ? / help  Show this help screen")
+            print("After 6 guesses, you will be asked if you'd like to continue.")
             continue
 
         response = input_response()
+
+        attempt += 1
+
+        if attempt > ALLOWED_ATTEMPTS:
+            print(f"\n❌ You've reached the {ALLOWED_ATTEMPTS}-guess limit.")
+            choice = input("Continue anyway? (y/N)> ").strip().lower()
+            if choice in {"y", "yes"}:
+                print("Continuing...")
+                override_attempts += 1
+            else:
+                print("Exiting.")
+                return
 
         for idx, letter in enumerate(response):
             if letter == "G":
@@ -318,9 +333,12 @@ def solve():
                         pass
         possible_words = match(word_vector, possible_words)
 
+        offset_start = 0  # Reset suggestion list window after filtering
+
         if not possible_words:
             print("\n❌ No possible words remaining based on given feedback.")
-            print("❌ Double-check your inputs or consider restarting with 'r'.\n")
+            print("❌ Double-check your inputs. Restart with 'r'.\n")
+            continue
 
         print(word_vector)
 

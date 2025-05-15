@@ -26,11 +26,12 @@
 - [x] Add runtime paging with `+n`, `-n`, and `^`
 - [x] Add interactive quit (`q`) and restart (`r`) commands
 - [x] Support `.` as alias for gray (`?`) in response input
-- [ ] Add `?` or `help` in input prompt to print runtime command help
-- [ ] Add `+ / -` commands to README examples for paging navigation
+- [x] Add `?` or `help` in input prompt to print runtime command help
+- [x] Add `+ / -` commands to README examples for paging navigation
 - [x] Handle edge case: no possible words remaining — advise restart
 - [ ] Add log rotation weekly (e.g., Mondays)
 - [ ] Add structured logging for guesses, responses, and metadata
+- [x] After 6 guesses, ask user if they want to continue instead of hard exit
 
 ## Nice-to-Have
 - [ ] Solve summary output for each run

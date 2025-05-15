@@ -49,6 +49,8 @@ At the "Input the word you entered" prompt:
 
 - If no words remain due to feedback, you'll be prompted to restart
 
+- After 6 guesses, you'll be prompted to continue manually
+
 ### Optional CLI Flags
 
 - `--refresh` : Force-refresh the valid word list

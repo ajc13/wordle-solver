@@ -13,6 +13,10 @@ __pycache__/
 valid_word_list.txt
 used_word_list.txt
 
+# Log files
+wordle_solver.log
+wordle_solver_*.log
+
 # Editor/OS noise
 .DS_Store
 *.swp

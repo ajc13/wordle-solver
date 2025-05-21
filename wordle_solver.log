@@ -1,0 +1,85 @@
+# Started: 2025-05-19 20:21:35
+# Args: none
+1,arose,?????
+2,tulip,Y??YY
+# Started: 2025-05-19 20:29:26
+# Args: none
+1,arose,?????
+2,tulip,Y??YY
+# Started: 2025-05-19 20:30:18
+# Args: none
+# Session ended (user restarted)
+
+# Started: 2025-05-19 20:30:27
+# Args: none
+# Session ended (user quit)
+
+# Started: 2025-05-19 20:30:35
+# Args: none
+1,soare,?????
+2,unlit,?????
+3,pygmy,?????
+# Session ended (user quit)
+
+# Started: 2025-05-19 20:44:29
+# Args: none
+1,arose,?????
+2,tulip,Y??YY
+# Started: 2025-05-20 19:47:04
+# Args: none
+1,arose,?YY?G
+2,noire,YG?YG
+3,borne,GGGGG
+# Session ended (solved)
+
+[2025-05-20 20:10:52] # Session started
+[2025-05-20 20:10:52] # Args: none
+[2025-05-20 20:11:10] 1,arose,?YY?G (14855 left)
+[2025-05-20 20:11:22] 2,noire,YG?YG (49 left)
+[2025-05-20 20:11:32] 3,borne,GGGGG (6 left)
+[2025-05-20 20:11:32] # Session ended (solved)
+[2025-05-20 20:15:38] # Session started
+[2025-05-20 20:15:38] # Args: none
+[2025-05-20 20:15:51] 1,arose,YGYGY (14855 left)
+[2025-05-20 20:15:51] # Session ended (no words remaining)
+[2025-05-20 20:15:55] # Session ended (user restarted)
+[2025-05-20 20:15:55] # Session started
+[2025-05-20 20:15:55] # Args: none
+[2025-05-20 20:16:08] 1,arose,?G?G? (14855 left)
+[2025-05-20 20:16:24] # Session ended (user quit)
+[2025-05-20 20:40:16] # Session started
+[2025-05-20 20:40:16] # Args: none
+[2025-05-20 20:40:30] 1,aeros,GYGY? (14855 left)
+[2025-05-20 20:40:30] # Session ended (no words remaining)
+[2025-05-20 20:41:11] # Session ended (user restarted)
+[2025-05-20 20:41:12] # Session started
+[2025-05-20 20:41:12] # Args: none
+[2025-05-20 20:42:50] # Session ended (user quit)
+[2025-05-20 20:42:51] # Session started
+[2025-05-20 20:42:51] # Args: none
+[2025-05-20 20:43:02] 1,aloes,?GGY? (14855 left)
+[2025-05-20 20:43:27] 2,clone,GGGGY (22 left)
+[2025-05-20 20:43:27] # Session ended (no words remaining)
+[2025-05-20 20:43:35] # Session ended (user quit)
+[2025-05-20 20:50:34] # Session started
+[2025-05-20 20:50:34] # Args: none
+[2025-05-20 20:50:38] 1,arose,????? (14855 left)
+[2025-05-20 20:54:53] # Session ended (user quit)
+[2025-05-20 20:54:54] # Session started
+[2025-05-20 20:54:54] # Args: none
+[2025-05-20 20:55:11] 1,arose,?YY?G (14855 left)
+[2025-05-20 20:55:21] 2,noire,YG?YG (49 left)
+[2025-05-20 20:55:28] 3,borne,GGGGG (6 left)
+[2025-05-20 20:55:28] # Session ended (solved)
+[2025-05-20 21:02:16] # Session started
+[2025-05-20 21:02:16] # Args: none
+[2025-05-20 21:02:26] 1,arose,?YY?G (14855 left)
+[2025-05-20 21:02:41] 2,noire,YG?YG (49 left)
+[2025-05-20 21:02:54] 3,borne,GGGGG (6 left)
+[2025-05-20 21:02:54] # Session ended (solved)
+[2025-05-20 21:02:54] # Game Summary:
+[2025-05-20 21:02:54] #   1. arose → ?YY?G (14855 left)
+[2025-05-20 21:02:54] #   2. noire → YG?YG (49 left)
+[2025-05-20 21:02:54] #   3. borne → GGGGG (6 left)
+[2025-05-20 21:02:54] # Total guesses: 3
+[2025-05-20 21:02:54] 

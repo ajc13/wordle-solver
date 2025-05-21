@@ -49,18 +49,24 @@ LOG_FILE = "wordle_solver.log"
 ################################################################################
 def log_game_summary(guess_history):
     log_event("# Game Summary:")
-    for attempt, word, response, remaining in guess_history:
-        log_event(f"#   {attempt}. {word} → {response} ({remaining} left)")
+    for attempt, word, response, before, after in guess_history:
+        log_event(
+            f"#   {attempt}. {word:<10} → {response:<5} ({before} → {after} left, {before - after} cut)"
+        )
     log_event(f"# Total guesses: {len(guess_history)}")
     log_event("")  # Blank line to separate sessions
+
 
 def print_game_summary(guess_history):
     print("\n🧾 Game Summary")
     print("-" * 40)
-    for attempt, word, response, remaining in guess_history:
-        print(f" {attempt}. {word:<10} → {response:<5} ({remaining} left)")
+    for attempt, word, response, before, after in guess_history:
+        print(
+            f" {attempt}. {word:<10} → {response:<5} ({before} → {after} left, {before - after} cut)"
+        )
     print("-" * 40)
     print(f" Total guesses: {len(guess_history)}")
+
 
 def rotate_log_if_monday():
     today = datetime.now()
@@ -69,7 +75,8 @@ def rotate_log_if_monday():
         rotated_name = f"wordle_solver_{today.strftime('%Y-%m-%d')}.log"
         log_path.rename(rotated_name)
         log_event(f"Log rotated to {rotated_name}")
-        
+
+
 def log_event(message: str):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, "a") as log:
@@ -112,7 +119,7 @@ def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
     with open(file_path, "w") as f:
         f.write("\n".join(words) + "\n")
     print(f"✅ Saved {len(words)} used answers to {file_path}")
-    
+
     log_event("Fetched used word list.")
 
 
@@ -152,6 +159,7 @@ def load_words():
         for word in Path(WORD_LIST_FILE).read_text().splitlines()
         if len(word) == WORD_LENGTH and set(word) < ALLOWABLE_CHARACTERS
     }
+
 
 def calculate_word_commonality(word, letter_freq):
     score = 0.0
@@ -207,7 +215,7 @@ def input_word(WORDS, letter_freq, used_words=None):
 
         if word in {"?", "help"}:
             return "CMD_HELP"
-        
+
         if word == "!":
             return "CMD_HISTORY"
 
@@ -273,7 +281,7 @@ def solve():
         USED_WORDS = set()
 
     guess_history = []
-    
+
     possible_words = WORDS.copy()
 
     word_vector = [set(string.ascii_lowercase) for _ in range(WORD_LENGTH)]
@@ -302,6 +310,8 @@ def solve():
             USED_WORDS,
             start_index=offset_start,
         )
+
+        words_before = len(possible_words)
 
         word = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS)
 
@@ -337,12 +347,13 @@ def solve():
             print_game_summary(guess_history)
             return solve()
 
-       
         if word == "CMD_HISTORY":
             if guess_history:
                 print("Guess history:")
-                for i, w, r, remaining in guess_history:
-                    print(f"  {i}. {w:<10} → {r:<5} ({remaining} left)")
+                for attempt, word, response, before, after in guess_history:
+                    print(
+                        f" {attempt}. {word:<10} → {response:<5} ({before} → {after} left, {before - after} cut)"
+                    )
             else:
                 print("No guesses yet.")
             continue
@@ -354,24 +365,14 @@ def solve():
             print("  ^              Reset to top of suggestion list")
             print("  q / quit       Quit the solver")
             print("  r / restart    Restart the session")
-            print("  ! / history    Show past guesses and how many words remained after each")
+            print(
+                "  ! / history    Show past guesses and how many words remained after each"
+            )
             print("  ? / help  Show this help screen")
             print("After 6 guesses, you will be asked if you'd like to continue.")
             continue
 
         response = input_response()
-
-        log_event(f"{attempt},{word},{response} ({len(possible_words)} left)")
-
-        guess_history.append((attempt, word, response, len(possible_words)))
-
-        if response == "GGGGG":
-            log_event("# Session ended (solved)")
-            log_game_summary(guess_history)
-            print_game_summary(guess_history)
-            print("🎉 Word solved!")
-            return
-        attempt += 1
 
         if attempt > ALLOWED_ATTEMPTS:
             print(f"\n❌ You've reached the {ALLOWED_ATTEMPTS}-guess limit.")
@@ -408,9 +409,23 @@ def solve():
                         vector.remove(word[idx])
                     except KeyError:
                         pass
+
         possible_words = match(word_vector, possible_words)
 
         offset_start = 0  # Reset suggestion list window after filtering
+
+        log_event(f"{attempt},{word},{response} ({len(possible_words)} left)")
+
+        words_after = len(possible_words)
+        guess_history.append((attempt, word, response, words_before, words_after))
+
+        if response == "GGGGG":
+            log_event("# Session ended (solved)")
+            log_game_summary(guess_history)
+            print_game_summary(guess_history)
+            print("🎉 Word solved!")
+            return
+        attempt += 1
 
         if not possible_words:
             print("\n❌ No possible words remaining based on given feedback.")

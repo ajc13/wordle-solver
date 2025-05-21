@@ -35,6 +35,7 @@
 - [x] Log timestamp on each entry
 - [x] Log number of words remaining on each guess
 - [x] Use helper function for logging to centralize logic
+- [x] Show how many words were eliminated by each guess in history and summary
 
 ## Nice-to-Have
 - [x] Quit and restart options

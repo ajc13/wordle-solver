@@ -12,3 +12,9 @@
 ### Changed
 - Replaced for-loop with while-loop for attempt control
 - Switched to centralized logging function
+
+## [1.0.1] – 2025-05-21
+### Added
+- Per-guess elimination tracking (before → after word count)
+- Improved log format with cut counts
+- Summary block now shows how many words were removed by each guess

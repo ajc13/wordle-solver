@@ -34,16 +34,19 @@ Note: .venv/ is excluded from version control (see .gitignore).
 python3 wordle_solver.py
 ```
 
+- A new log file is started each Monday (previous logs archived)
+
 ### Runtime Controls
 
 At the "Input the word you entered" prompt:
 
-- `+` or `+n` : Show next suggestions (in batches)
-- `-` or `-n` : Show previous suggestions
-- `^`         : Reset to top of suggestion list
-- `q` / `quit`: Quit the game
-- `r` / `restart`: Restart the current solver session
-- `?` / `help` : Show commands
+- `+` or `+n`     : Show next suggestions (in batches)
+- `-` or `-n`     : Show previous suggestions
+- `^`             : Reset to top of suggestion list
+- `q` / `quit`    : Quit the game
+- `r` / `restart` : Restart the current solver session
+- `!` / `history` : Show past guesses and how many words remained after each
+- `?` / `help`    : Show commands
 
 - You may enter '.' instead of '?' when entering gray feedback (e.g., G.Y??)
 
@@ -70,7 +73,7 @@ At the "Input the word you entered" prompt:
 
 ## Word List Handling
 
-- Word lists are fetched automatically if missing or stale
+- Word lists are fetched automatically if missing or stale (evry 7 days)
 - Lists are ignored by Git
 - Used answers are excluded from suggestions when available
 

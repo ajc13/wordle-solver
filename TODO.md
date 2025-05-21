@@ -29,11 +29,15 @@
 - [x] Add `?` or `help` in input prompt to print runtime command help
 - [x] Add `+ / -` commands to README examples for paging navigation
 - [x] Handle edge case: no possible words remaining — advise restart
-- [ ] Add log rotation weekly (e.g., Mondays)
-- [ ] Add structured logging for guesses, responses, and metadata
+- [x] Add log rotation weekly (e.g., Mondays)
+- [x] Add structured logging for guesses, responses, and metadata
 - [x] After 6 guesses, ask user if they want to continue instead of hard exit
-- [ ] Warn or suggest auto-submit when only one word remains
+- [x] Log timestamp on each entry
+- [x] Log number of words remaining on each guess
+- [x] Use helper function for logging to centralize logic
 
 ## Nice-to-Have
-- [ ] Solve summary output for each run
-- [X] Quit and restart options
+- [x] Quit and restart options
+- [x] Add `!` for history, status so far
+- [x] Display word count remaining in history output
+- [x] End of game summary

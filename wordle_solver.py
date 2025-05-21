@@ -24,6 +24,9 @@ import operator
 import urllib.request
 from itertools import chain
 
+from datetime import datetime
+from pathlib import Path
+
 ################################################################################
 # Configuration
 WORD_LIST_URL = "https://raw.githubusercontent.com/tabatkins/wordle-list/main/words"
@@ -36,11 +39,43 @@ USED_LIST_FILE = "used_word_list.txt"
 MAX_AGE_DAYS = 7
 
 ALLOWABLE_CHARACTERS = set(string.ascii_letters)
+
 ALLOWED_ATTEMPTS = 6
 WORD_LENGTH = 5
 
+LOG_FILE = "wordle_solver.log"
+
 
 ################################################################################
+def log_game_summary(guess_history):
+    log_event("# Game Summary:")
+    for attempt, word, response, remaining in guess_history:
+        log_event(f"#   {attempt}. {word} → {response} ({remaining} left)")
+    log_event(f"# Total guesses: {len(guess_history)}")
+    log_event("")  # Blank line to separate sessions
+
+def print_game_summary(guess_history):
+    print("\n🧾 Game Summary")
+    print("-" * 40)
+    for attempt, word, response, remaining in guess_history:
+        print(f" {attempt}. {word:<10} → {response:<5} ({remaining} left)")
+    print("-" * 40)
+    print(f" Total guesses: {len(guess_history)}")
+
+def rotate_log_if_monday():
+    today = datetime.now()
+    log_path = Path(LOG_FILE)
+    if today.weekday() == 0 and log_path.exists():  # Monday = 0
+        rotated_name = f"wordle_solver_{today.strftime('%Y-%m-%d')}.log"
+        log_path.rename(rotated_name)
+        log_event(f"Log rotated to {rotated_name}")
+        
+def log_event(message: str):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(LOG_FILE, "a") as log:
+        log.write(f"[{now}] {message}\n")
+
+
 def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
     def _attempt_scrape(verify_ssl=True):
         verify_path = certifi.where() if verify_ssl else False
@@ -77,6 +112,8 @@ def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
     with open(file_path, "w") as f:
         f.write("\n".join(words) + "\n")
     print(f"✅ Saved {len(words)} used answers to {file_path}")
+    
+    log_event("Fetched used word list.")
 
 
 def file_older_than(path: str, days: int) -> bool:
@@ -91,6 +128,7 @@ def download_file(url: str, destination: str):
     print(f"Downloading {url} → {destination}")
     try:
         urllib.request.urlretrieve(url, destination)
+        log_event("Word list retreived.")
     except Exception as e:
         print(f"⚠️  Failed to download {url}: {e}")
         print(f"⚠️  Proceeding without refreshing {destination}")
@@ -114,7 +152,6 @@ def load_words():
         for word in Path(WORD_LIST_FILE).read_text().splitlines()
         if len(word) == WORD_LENGTH and set(word) < ALLOWABLE_CHARACTERS
     }
-
 
 def calculate_word_commonality(word, letter_freq):
     score = 0.0
@@ -170,6 +207,9 @@ def input_word(WORDS, letter_freq, used_words=None):
 
         if word in {"?", "help"}:
             return "CMD_HELP"
+        
+        if word == "!":
+            return "CMD_HISTORY"
 
         if len(word) == WORD_LENGTH and word in WORDS:
             print(f"{word:<10} | {calculate_word_commonality(word, letter_freq):<5.2}")
@@ -187,14 +227,9 @@ def input_response():
         response = raw.strip().upper().replace(".", "?")
 
         if len(response) == WORD_LENGTH and set(response) <= {"G", "Y", "?"}:
-            if response == "GGGGG":
-                print("Seems you are done!")
-                exit()
-            else:
-                break
+            return response
         else:
             print(f"Error - invalid answer {response}")
-    return response
 
 
 def match_word_vector(word, word_vector):
@@ -211,6 +246,8 @@ def match(word_vector, possible_words):
 
 def solve():
     import sys
+
+    rotate_log_if_monday()
 
     force_refresh = "--refresh" in sys.argv
     force_used = "--refresh-used" in sys.argv
@@ -235,6 +272,8 @@ def solve():
         print("⚠️  No used word list found — continuing without NYT filter.")
         USED_WORDS = set()
 
+    guess_history = []
+    
     possible_words = WORDS.copy()
 
     word_vector = [set(string.ascii_lowercase) for _ in range(WORD_LENGTH)]
@@ -244,6 +283,12 @@ def solve():
 
     attempt = 1
     override_attempts = 0
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    args = " ".join(sys.argv[1:])
+
+    log_event("# Session started")
+    log_event(f"# Args: {args or 'none'}")
 
     while attempt <= (ALLOWED_ATTEMPTS + override_attempts):
         print(f"Attempt {attempt} with {len(possible_words)} possible words")
@@ -278,25 +323,54 @@ def solve():
 
         if word == "CMD_QUIT":
             print("Exiting.")
+
+            log_event("# Session ended (user quit)")
+            log_game_summary(guess_history)
+            print_game_summary(guess_history)
             return
 
         if word == "CMD_RESTART":
             print("Restarting...")
+
+            log_event("# Session ended (user restarted)")
+            log_game_summary(guess_history)
+            print_game_summary(guess_history)
             return solve()
+
+       
+        if word == "CMD_HISTORY":
+            if guess_history:
+                print("Guess history:")
+                for i, w, r, remaining in guess_history:
+                    print(f"  {i}. {w:<10} → {r:<5} ({remaining} left)")
+            else:
+                print("No guesses yet.")
+            continue
 
         if word == "CMD_HELP":
             print("Help:")
-            print("  + / +n    Show next suggestions")
-            print("  - / -n    Show previous suggestions")
-            print("  ^         Reset to top of suggestion list")
-            print("  q / quit  Quit the solver")
-            print("  r / restart  Restart the session")
+            print("  + / +n         Show next suggestions")
+            print("  - / -n         Show previous suggestions")
+            print("  ^              Reset to top of suggestion list")
+            print("  q / quit       Quit the solver")
+            print("  r / restart    Restart the session")
+            print("  ! / history    Show past guesses and how many words remained after each")
             print("  ? / help  Show this help screen")
             print("After 6 guesses, you will be asked if you'd like to continue.")
             continue
 
         response = input_response()
 
+        log_event(f"{attempt},{word},{response} ({len(possible_words)} left)")
+
+        guess_history.append((attempt, word, response, len(possible_words)))
+
+        if response == "GGGGG":
+            log_event("# Session ended (solved)")
+            log_game_summary(guess_history)
+            print_game_summary(guess_history)
+            print("🎉 Word solved!")
+            return
         attempt += 1
 
         if attempt > ALLOWED_ATTEMPTS:
@@ -306,6 +380,9 @@ def solve():
                 print("Continuing...")
                 override_attempts += 1
             else:
+                log_event("# Session ended (max guesses)")
+                log_game_summary(guess_history)
+                print_game_summary(guess_history)
                 print("Exiting.")
                 return
 
@@ -338,6 +415,11 @@ def solve():
         if not possible_words:
             print("\n❌ No possible words remaining based on given feedback.")
             print("❌ Double-check your inputs. Restart with 'r'.\n")
+
+            log_event("# Session ended (no words remaining)")
+            log_game_summary(guess_history)
+            print_game_summary(guess_history)
+
             continue
 
         print(word_vector)

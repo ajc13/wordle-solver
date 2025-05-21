@@ -18,3 +18,7 @@
 - Per-guess elimination tracking (before → after word count)
 - Improved log format with cut counts
 - Summary block now shows how many words were removed by each guess
+
+## [1.0.2] – 2025-05-21
+### Fix
+- Fix: replace Counter.total() with sum(...) for Python 3.9 compatibility

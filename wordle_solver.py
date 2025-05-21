@@ -266,7 +266,7 @@ def solve():
     LETTER_COUNTER = Counter(chain.from_iterable(WORDS))
 
     LETTER_FREQUENCY = {
-        character: value / LETTER_COUNTER.total()
+        character: value / sum(LETTER_COUNTER.values())
         for character, value in LETTER_COUNTER.items()
     }
 

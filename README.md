@@ -80,10 +80,11 @@ At the "Input the word you entered" prompt:
 ## Solver Features
 
 - Suggests high-frequency eliminators (e.g., SOARE, AUDIO)
-- Applies hard mode logic:
-  - Green: letter in correct position (must be reused)
-  - Yellow: letter in word but new position (must be used elsewhere)
-  - Grey: letter excluded (unless known duplicate)
+- Applies hard mode logic using feedback-aware filtering:
+  - Green: letter in correct position
+  - Yellow: letter in word but in a different position
+  - Gray: letter not in word or used too many times
+  - Supports duplicate letter disambiguation correctly (e.g., `undid`, `error`)
 - Suggests next guess based on frequency analysis
 
 ## Roadmap

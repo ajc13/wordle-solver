@@ -14,7 +14,7 @@
 
 ## Testing
 - [ ] Add unit test coverage for filtering logic
-- [ ] Validate green/yellow/grey parsing logic and edge cases
+- [x] Validate green/yellow/grey parsing logic and edge cases
 - [ ] Add test harness for simulated Wordle rounds or regression
 
 ## Docs

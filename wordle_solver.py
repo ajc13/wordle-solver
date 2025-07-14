@@ -240,16 +240,50 @@ def input_response():
             print(f"Error - invalid answer {response}")
 
 
-def match_word_vector(word, word_vector):
-    assert len(word) == len(word_vector)
-    for letter, v_letter in zip(word, word_vector):
-        if letter not in v_letter:
-            return False
+def word_matches_feedback(word, guess, feedback):
+    """
+    Check if a candidate word matches the feedback from a guess.
+    G = correct letter, correct position
+    Y = correct letter, wrong position
+    ? = letter not in word (or overused)
+    """
+    if len(word) != len(guess) or len(guess) != len(feedback):
+        return False
+
+    word = word.lower()
+    guess = guess.lower()
+
+    # Step 1: Track correct letters for greens
+    remaining_letters = Counter(word)
+
+    # Green pass
+    for i in range(len(guess)):
+        if feedback[i] == "G":
+            if word[i] != guess[i]:
+                return False
+            remaining_letters[guess[i]] -= 1
+
+    # Yellow pass
+    for i in range(len(guess)):
+        if feedback[i] == "Y":
+            if guess[i] == word[i]:
+                return False
+            if remaining_letters[guess[i]] <= 0:
+                return False
+            remaining_letters[guess[i]] -= 1
+
+    # Gray pass
+    for i in range(len(guess)):
+        if feedback[i] == "?":
+            # If still remaining, it means it shouldn't be in word or is overused
+            if remaining_letters[guess[i]] > 0:
+                return False
+
     return True
 
 
-def match(word_vector, possible_words):
-    return [word for word in possible_words if match_word_vector(word, word_vector)]
+def filter_word_list(possible_words, guess, feedback):
+    return [w for w in possible_words if word_matches_feedback(w, guess, feedback)]
 
 
 def solve():
@@ -283,8 +317,6 @@ def solve():
     guess_history = []
 
     possible_words = WORDS.copy()
-
-    word_vector = [set(string.ascii_lowercase) for _ in range(WORD_LENGTH)]
 
     offset_start = 0
     window_size = 10
@@ -387,30 +419,8 @@ def solve():
                 print("Exiting.")
                 return
 
-        for idx, letter in enumerate(response):
-            if letter == "G":
-                word_vector[idx] = {word[idx]}
-            elif letter == "Y":
-                # Filter down to words that contain the letter but not at this position
-                possible_words = [
-                    w for w in possible_words if word[idx] in w and w[idx] != word[idx]
-                ]
-                try:
-                    word_vector[idx].remove(word[idx])
-                except KeyError:
-                    pass
-
-            elif letter == "?":
-                # TODO: Improve logic to handle duplicate letters correctly.
-                # This removes all instances of a gray letter, which is wrong if that letter also got a green/yellow elsewhere in the same guess.
-
-                for vector in word_vector:
-                    try:
-                        vector.remove(word[idx])
-                    except KeyError:
-                        pass
-
-        possible_words = match(word_vector, possible_words)
+        #
+        possible_words = filter_word_list(possible_words, word, response)
 
         offset_start = 0  # Reset suggestion list window after filtering
 
@@ -437,7 +447,13 @@ def solve():
 
             continue
 
-        print(word_vector)
+
+def debug_filter(word, guesses):
+    for guess, feedback in guesses:
+        print(
+            f"{word} vs {guess} → {feedback} →",
+            word_matches_feedback(word, guess, feedback),
+        )
 
 
 if __name__ == "__main__":

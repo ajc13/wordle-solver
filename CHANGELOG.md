@@ -66,3 +66,12 @@
 - MIT `LICENSE`
 - README credits (word list, past answers, Wordle trademark notice) and license section
 - Test that the scraper sends `SCRAPER_USER_AGENT`
+
+## [Unreleased]
+### Added
+- Your own solves (`GGGGG` lines in `logs/`) are flagged ✅ in suggestions, with a "You've solved this word before" warning; scraped past answers keep 🔁
+- Own solves are re-read at each restart, so a just-finished game counts immediately
+- Tests for data dir, legacy migration and own-solve parsing (`tests/test_data.py`)
+
+### Changed
+- Word lists now live in `data/` next to the script instead of the current directory; lists left in the current directory by older versions are moved there on first run

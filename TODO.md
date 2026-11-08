@@ -6,17 +6,24 @@
 - [x] Answer + valid word list fetch logic integrated into solver
 - [x] SSL fallback for scraping
 - [x] FiveForks parser adjusted for new layout (#alphalist div)
+- [x] Word lists stored in `data/` next to the script (legacy files migrated)
+- [x] Own solves (`GGGGG` in logs) flagged ✅ alongside scraped past answers 🔁
 
-## Optimization
+## Optimization (Hard Mode: revealed hints must be reused)
 - [x] Strategy shift to improve average solve count
-- [ ] Score candidates by entropy or coverage value
-- [ ] Support wordlist weighting or adaptive filtering
+- [ ] Rank by feedback-bucket size (expected remaining words) over hard-mode-legal guesses
+- [ ] Cache opener ranking (full first-turn scoring is ~19 min); rebuild when word list changes
+- [ ] Warn when an entered guess breaks Hard Mode
+- [ ] Weight by answer likelihood (past answers / common words) to break ties, e.g. wrest vs prest/trest
+- [ ] Simulation harness over past answers to measure average guesses before/after changes
 
 ## Testing
 - [x] Add unit test coverage for filtering logic (`tests/test_filter.py`)
 - [x] Validate green/yellow/grey parsing logic and edge cases (fuzzed against reference scorer)
 - [x] Session flow tests: quit, restart, no words remaining, scrape failure (`tests/test_session.py`)
-- [ ] Add test harness for simulated Wordle rounds or regression
+- [x] Data dir, legacy migration, own-solve parsing tests (`tests/test_data.py`)
+- [ ] Add test harness for simulated Wordle rounds or regression (see Optimization)
+- [ ] CI: run tests on Python 3.9 and latest (GitHub Actions)
 
 ## Docs
 - [x] Add virtualenv setup instructions to README under "Installation"

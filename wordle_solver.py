@@ -19,6 +19,7 @@ from collections import Counter
 from pathlib import Path
 from datetime import datetime, timedelta
 
+import shutil
 import string
 import operator
 import urllib.request
@@ -33,8 +34,12 @@ FIVEFORKS_URL = "https://www.fiveforks.com/wordle/"
 # Identify honestly when scraping; fiveforks.com's robots.txt allows /wordle/.
 SCRAPER_USER_AGENT = "wordle-solver (+https://github.com/ajc13/wordle-solver)"
 
-WORD_LIST_FILE = "valid_word_list.txt"
-USED_LIST_FILE = "used_word_list.txt"
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+# Downloaded lists live in data/ next to this script, not the current directory.
+DATA_DIR = SCRIPT_DIR / "data"
+WORD_LIST_FILE = DATA_DIR / "valid_word_list.txt"
+USED_LIST_FILE = DATA_DIR / "used_word_list.txt"
 
 MAX_AGE_DAYS = 7
 
@@ -45,9 +50,17 @@ WORD_LENGTH = 5
 
 # Weekly logs: logs/YYYY/MM/wordle_solver_<monday>.log, next to this script.
 # The folder is chosen by the week's Monday so a week never splits across files.
-LOG_DIR = Path(__file__).resolve().parent / "logs"
+LOG_DIR = SCRIPT_DIR / "logs"
 
 GUESS_RESPONSE_SEPARATOR = re.compile(r"[/\s]+")
+
+# A solved guess in the logs, current or older format:
+#   "[2026-10-20 08:12:03] 4,wrest,GGGGG (1 left)"   or   "4,wrest,GGGGG"
+# Summary lines ("#   4. wrest → GGGGG") intentionally do not match.
+SOLVE_LINE = re.compile(r"(?:^|\] )\d+,([a-z]{5}),GGGGG\b", re.MULTILINE)
+
+OWN_SOLVE_MARK = " ✅"
+PAST_ANSWER_MARK = " 🔁"
 
 
 ################################################################################
@@ -153,7 +166,27 @@ def refresh_file_if_needed(file_path: str, url: str, force: bool = False):
         download_file(url, file_path)
 
 
+def migrate_legacy_data_files(old_dir=None):
+    """
+    Move word lists left in the current directory by older versions into
+    data/, so they are reused instead of downloaded again.
+    """
+    old_dir = Path.cwd() if old_dir is None else Path(old_dir)
+    for target in (WORD_LIST_FILE, USED_LIST_FILE):
+        legacy = old_dir / target.name
+        if legacy.resolve() == target.resolve():
+            continue
+        if legacy.is_file() and not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(legacy), str(target))
+            print(f"Moved {legacy} → {target}")
+            log_event(f"Moved legacy {legacy.name} into {target.parent}")
+
+
 def refresh_word_lists(force_wordlist=False, force_used=False):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    migrate_legacy_data_files()
+
     refresh_file_if_needed(WORD_LIST_FILE, WORD_LIST_URL, force_wordlist)
 
     if force_used or file_older_than(USED_LIST_FILE, MAX_AGE_DAYS):
@@ -166,6 +199,31 @@ def load_words():
         for word in Path(WORD_LIST_FILE).read_text().splitlines()
         if len(word) == WORD_LENGTH and set(word) < ALLOWABLE_CHARACTERS
     }
+
+
+def load_used_words():
+    """Past NYT answers scraped from FiveForks (empty set if unavailable)."""
+    if not Path(USED_LIST_FILE).exists():
+        print("⚠️  No used word list found — continuing without NYT filter.")
+        return set()
+    return {
+        word.strip().lower()
+        for word in Path(USED_LIST_FILE).read_text().splitlines()
+        if len(word.strip()) == WORD_LENGTH
+    }
+
+
+def load_own_solves(log_dir=None):
+    """Words you have solved, read from GGGGG lines in the game logs."""
+    log_dir = LOG_DIR if log_dir is None else Path(log_dir)
+    solves = set()
+    for path in sorted(log_dir.rglob("*.log")):
+        try:
+            text = path.read_text(errors="replace")
+        except OSError:
+            continue
+        solves.update(SOLVE_LINE.findall(text))
+    return solves
 
 
 def calculate_word_commonality(word, letter_freq):
@@ -184,9 +242,20 @@ def sort_by_word_commonality(words, letter_freq):
     )
 
 
-def display_word_table(word_commonalities, used_words=None, start_index=0):
+def past_answer_mark(word, used_words=None, own_solves=None):
+    """✅ for words you solved, 🔁 for other known past answers, else ''."""
+    if own_solves and word in own_solves:
+        return OWN_SOLVE_MARK
+    if used_words and word in used_words:
+        return PAST_ANSWER_MARK
+    return ""
+
+
+def display_word_table(
+    word_commonalities, used_words=None, start_index=0, own_solves=None
+):
     for i, (word, freq) in enumerate(word_commonalities, start=start_index + 1):
-        mark = " 🔁" if used_words and word in used_words else ""
+        mark = past_answer_mark(word, used_words, own_solves)
         print(f"{i:>3}. {word:<10} | {freq:<5.2}{mark}")
 
 
@@ -198,7 +267,7 @@ def parse_response(raw):
     return None
 
 
-def input_word(WORDS, letter_freq, used_words=None):
+def input_word(WORDS, letter_freq, used_words=None, own_solves=None):
     """
     Read a guess (or a command). Returns (word, response).
     response is set only when the guess was entered as "word/response" or
@@ -253,7 +322,9 @@ def input_word(WORDS, letter_freq, used_words=None):
             print(f"Error - '{word}' is not in the word list")
             continue
 
-        if used_words and word in used_words:
+        if own_solves and word in own_solves:
+            print("⚠️  Warning: You've solved this word before.")
+        elif used_words and word in used_words:
             print("⚠️  Warning: This word is a known past NYT solution.")
 
         print(f"{word:<10} | {calculate_word_commonality(word, letter_freq):<5.2}")
@@ -336,24 +407,21 @@ def solve():
         for character, value in LETTER_COUNTER.items()
     }
 
-    if Path(USED_LIST_FILE).exists():
-        USED_WORDS = set(
-            word.strip().lower()
-            for word in Path(USED_LIST_FILE).read_text().splitlines()
-            if len(word.strip()) == WORD_LENGTH
-        )
-    else:
-        print("⚠️  No used word list found — continuing without NYT filter.")
-        USED_WORDS = set()
+    USED_WORDS = load_used_words()
 
     args = " ".join(sys.argv[1:])
 
-    while play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args) == "restart":
+    while True:
+        # Re-read each game so a solve from the previous game is included.
+        own_solves = load_own_solves()
+        if play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args, own_solves) != "restart":
+            break
         print("Restarting...")
 
 
-def play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args=""):
+def play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args="", own_solves=None):
     """Play one game. Returns "restart" if the user asked to restart."""
+    own_solves = own_solves or set()
     guess_history = []
 
     possible_words = WORDS.copy()
@@ -378,11 +446,12 @@ def play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args=""):
             ranked_words[offset_start : offset_start + window_size],
             USED_WORDS,
             start_index=offset_start,
+            own_solves=own_solves,
         )
 
         words_before = len(possible_words)
 
-        word, response = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS)
+        word, response = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS, own_solves)
 
         if word.startswith("CMD_NEXT_"):
             step = int(word.split("_")[-1])
@@ -435,6 +504,7 @@ def play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args=""):
             )
             print("  ? / help       Show this help screen")
             print("  word/GY?.. or 'word GY?..'  Enter guess and response at once")
+            print(f" {OWN_SOLVE_MARK} you solved this before  {PAST_ANSWER_MARK} past NYT answer")
             print(
                 f"After {ALLOWED_ATTEMPTS} guesses, you will be asked if you'd like to continue."
             )

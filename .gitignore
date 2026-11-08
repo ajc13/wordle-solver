@@ -9,7 +9,8 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-# Word lists (fetched dynamically)
+# Word lists (fetched dynamically into data/; root entries for older versions)
+data/
 valid_word_list.txt
 used_word_list.txt
 

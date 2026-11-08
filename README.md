@@ -80,8 +80,13 @@ At the "Input the word you entered" prompt:
 
 ### Generated on First Run
 
-- `valid_word_list.txt`  — Fetched valid guess list (from tabatkins)
-- `used_word_list.txt`   — Scraped list of past NYT answers (from FiveForks)
+Created next to the script (ignored by Git), no matter which folder you run from:
+
+- `data/valid_word_list.txt` — Fetched valid guess list (from tabatkins)
+- `data/used_word_list.txt`  — Scraped list of past NYT answers (from FiveForks)
+- `logs/`                    — Weekly game logs
+
+Lists left in the current folder by older versions are moved into `data/` on first run.
 
 ## Word List Handling
 
@@ -89,7 +94,10 @@ At the "Input the word you entered" prompt:
 - If a fetch fails, the solver continues with the existing local copy
   (the past-answers scrape retries once without SSL verification first)
 - Lists are ignored by Git
-- Past NYT answers are marked with 🔁 in suggestions (not removed)
+- Past answers are flagged in suggestions (not removed):
+  - ✅ — you solved it (any `GGGGG` guess in your `logs/`)
+  - 🔁 — other past NYT answer (from FiveForks)
+- Your own solves fill the gap between weekly scrapes, and are re-read at each restart
 - The scraper identifies itself as `wordle-solver` with a link to this repo
   (fiveforks.com's robots.txt allows `/wordle/`)
 

@@ -34,7 +34,16 @@ Note: .venv/ is excluded from version control (see .gitignore).
 python3 wordle_solver.py
 ```
 
-- A new log file is started each Monday (previous logs archived)
+- Logs are written next to the script, one file per week (Monday start):
+  `logs/YYYY/MM/wordle_solver_YYYY-MM-DD.log`. The folder follows the
+  Monday's month, so a week that crosses into a new month stays in one file.
+
+### Entering Guesses
+
+At the "Input the word you entered" prompt, either:
+
+- Enter the word, then the response at the `Response>` prompt, or
+- Enter both at once, separated by `/` or a space: `dress/?GGG?` or `dress ?GGG?`
 
 ### Runtime Controls
 
@@ -65,6 +74,7 @@ At the "Input the word you entered" prompt:
 - `.gitignore`           — Ignores dynamic lists and logs
 - `README.md`            — This file
 - `TODO.md`              — Feature roadmap
+- `tests/`               — Unit tests (`python3 -m unittest discover -s tests`)
 
 ### Generated on First Run
 
@@ -73,9 +83,9 @@ At the "Input the word you entered" prompt:
 
 ## Word List Handling
 
-- Word lists are fetched automatically if missing or stale (evry 7 days)
+- Word lists are fetched automatically if missing or stale (every 7 days)
 - Lists are ignored by Git
-- Used answers are excluded from suggestions when available
+- Past NYT answers are marked with 🔁 in suggestions (not removed)
 
 ## Solver Features
 

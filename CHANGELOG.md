@@ -29,3 +29,19 @@
 - Replaced position-set filtering (`word_vector`) with full feedback-aware letter count matching
 - Added `word_matches_feedback()` and `filter_word_list()` functions
 - Removed legacy `match()` and `word_vector` logic
+
+## [1.1.0] – 2026-11-07
+### Added
+- Enter guess and response in one line: `dress/?GGG?` or `dress ?GGG?`
+- Weekly log files at `logs/YYYY/MM/wordle_solver_<monday>.log` (next to the script)
+- Unit tests in `tests/` (filter fuzzed against a reference Wordle scorer, 2026-10-20 regression)
+- Error message when a guess is not in the word list
+- `history` accepted as an alias for `!`
+
+### Fix
+- Gray feedback now rejects candidates with that letter in the same position
+- Viewing history no longer resets the attempt counter
+- 6-guess "continue anyway?" prompt now actually appears (previously exited silently)
+
+### Removed
+- Monday log rotation (could overwrite the previous week's archive)

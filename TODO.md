@@ -13,8 +13,8 @@
 - [ ] Support wordlist weighting or adaptive filtering
 
 ## Testing
-- [ ] Add unit test coverage for filtering logic
-- [x] Validate green/yellow/grey parsing logic and edge cases
+- [x] Add unit test coverage for filtering logic (`tests/test_filter.py`)
+- [x] Validate green/yellow/grey parsing logic and edge cases (fuzzed against reference scorer)
 - [ ] Add test harness for simulated Wordle rounds or regression
 
 ## Docs
@@ -29,7 +29,8 @@
 - [x] Add `?` or `help` in input prompt to print runtime command help
 - [x] Add `+ / -` commands to README examples for paging navigation
 - [x] Handle edge case: no possible words remaining — advise restart
-- [x] Add log rotation weekly (e.g., Mondays)
+- [x] Weekly log files under `logs/YYYY/MM/` (replaces Monday rotation)
+- [x] Accept `word/response` or `word response` in one entry
 - [x] Add structured logging for guesses, responses, and metadata
 - [x] After 6 guesses, ask user if they want to continue instead of hard exit
 - [x] Log timestamp on each entry
@@ -42,3 +43,8 @@
 - [x] Add `!` for history, status so far
 - [x] Display word count remaining in history output
 - [x] End of game summary
+
+## Known Issues
+- [ ] SSL-disabled retry in scraper is unguarded; a second failure crashes startup
+- [ ] "No words remaining" logs a session end but the session continues (double summary)
+- [ ] `restart` recurses into `solve()` and re-runs list refresh

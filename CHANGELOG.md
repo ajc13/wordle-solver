@@ -76,7 +76,7 @@
 ### Changed
 - Word lists now live in `data/` next to the script instead of the current directory; lists left in the current directory by older versions are moved there on first run
 
-## [Unreleased]
+## [1.3.1] – 2026-11-08
 ### Changed
 - Live ranking cap is sized to the device at startup (~3s of work); `WORDLE_RANK_LIMIT` still overrides. iSH measured 500 µs per scoring, so the old fixed 100k cap meant turns of up to a minute
 - Over the cap (after turn 1), suggestions list the most common words first instead of by letter frequency

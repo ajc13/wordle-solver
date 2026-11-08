@@ -58,7 +58,7 @@
 ### Docs
 - README: corrected Hard Mode and past-answer claims, Python 3.9+, restart and fetch-failure behavior, example openers
 
-## [Unreleased]
+## [1.1.2] – 2026-11-07
 ### Changed
 - Scraper sends an honest `wordle-solver` User-Agent (with repo link) instead of impersonating Chrome; verified against fiveforks.com
 

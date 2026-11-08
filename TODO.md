@@ -11,18 +11,22 @@
 
 ## Optimization (Hard Mode: revealed hints must be reused)
 - [x] Strategy shift to improve average solve count
-- [ ] Rank by feedback-bucket size (expected remaining words) over hard-mode-legal guesses
-- [ ] Cache opener ranking (full first-turn scoring is ~19 min); rebuild when word list changes
-- [ ] Warn when an entered guess breaks Hard Mode
-- [ ] Weight by answer likelihood (past answers / common words) to break ties, e.g. wrest vs prest/trest
-- [ ] Simulation harness over past answers to measure average guesses before/after changes
+- [x] Rank by feedback-bucket size (expected remaining words) over hard-mode-legal guesses (4.69 → 4.39 avg)
+- [x] Precomputed second-guess table for `arose` (`precomputed/`); turn 2 instant on iSH
+- [x] Reject entered guesses that break Hard Mode, with the reason
+- [x] Simulation harness over past answers (`wordle_lab.py simulate`)
+- [ ] Run `wordle_lab.py bench` on iSH; tune default `WORDLE_RANK_LIMIT` if turns are slow
+- [ ] Weight by answer likelihood to break ties (e.g. wrest vs prest/trest). Needs a
+      source independent of past answers (NYT may avoid repeats), e.g. word frequency
+- [ ] Cache opener ranking for turn 1 (full scoring ~19 min) if a non-arose opener is wanted
 
 ## Testing
 - [x] Add unit test coverage for filtering logic (`tests/test_filter.py`)
 - [x] Validate green/yellow/grey parsing logic and edge cases (fuzzed against reference scorer)
 - [x] Session flow tests: quit, restart, no words remaining, scrape failure (`tests/test_session.py`)
 - [x] Data dir, legacy migration, own-solve parsing tests (`tests/test_data.py`)
-- [ ] Add test harness for simulated Wordle rounds or regression (see Optimization)
+- [x] Ranking, Hard Mode, table and simulator tests (`tests/test_ranking.py`)
+- [x] Test harness for simulated Wordle rounds (`wordle_lab.py simulate`)
 - [ ] CI: run tests on Python 3.9 and latest (GitHub Actions)
 
 ## Docs

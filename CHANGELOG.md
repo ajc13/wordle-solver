@@ -75,3 +75,18 @@
 
 ### Changed
 - Word lists now live in `data/` next to the script instead of the current directory; lists left in the current directory by older versions are moved there on first run
+
+## [Unreleased]
+### Added
+- Hard Mode ranking by expected words left: each legal guess groups the candidates by the feedback it would produce; ties prefer possible answers. `·` marks guesses that can't be the answer
+- `wordle_lab.py` offline tools: `simulate` (play all past answers, report averages and failures), `build-table`, and `bench` (time ranking on the phone)
+- Precomputed second-guess table for opener `arose` (`precomputed/second_guess_arose.json`, 166 patterns); turn 2 is a lookup
+- `WORDLE_RANK_LIMIT` caps live ranking work for slow devices; over the cap, ranking falls back to letter frequency
+- Tests for scoring, Hard Mode rules, ranking, tables and the simulator (`tests/test_ranking.py`)
+
+### Changed
+- Guesses that break Hard Mode are rejected with the reason (the NYT game wouldn't accept them)
+- Ranking is computed once per turn instead of on every paging command
+
+### Results
+- Simulated over 1942 past answers (opener `arose`, Hard Mode): average 4.69 → 4.39 guesses; games over 6 guesses 182 → 98

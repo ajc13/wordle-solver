@@ -3,9 +3,11 @@
 ## Overview
 
 This terminal-based Wordle solver:
-- Suggests only words consistent with all feedback so far (Hard Mode compatible)
-- Flags past NYT answers (scraped from FiveForks)
-- Prioritizes statistical optimization to lower average solve count
+- Plays NYT Hard Mode: suggests only Hard Mode legal guesses, ranked by how
+  well they split the remaining words, and rejects guesses Hard Mode wouldn't allow
+- Flags past NYT answers (scraped from FiveForks) and your own past solves
+- Light enough for slow devices (e.g. iSH on iPhone): heavy work is precomputed
+  on a desktop with `wordle_lab.py` and committed as small table files
 - Runs cleanly under WSL with dynamic word list fetching
 
 ## Requirements
@@ -45,6 +47,9 @@ At the "Input the word you entered" prompt, either:
 - Enter the word, then the response at the `Response>` prompt, or
 - Enter both at once, separated by `/` or a space: `dress/?GGG?` or `dress ?GGG?`
 
+Guesses that break Hard Mode (e.g. dropping a green letter) are rejected with
+the reason, since the NYT game wouldn't accept them either.
+
 ### Runtime Controls
 
 At the "Input the word you entered" prompt:
@@ -69,9 +74,16 @@ At the "Input the word you entered" prompt:
 - `--refresh` : Force-refresh the valid word list
 - `--refresh-used` : Force-refresh the list of past NYT answers
 
+### Environment
+
+- `WORDLE_RANK_LIMIT` : Cap on live ranking work (default 100000). Lower it if
+  turns feel slow on your device; `python3 wordle_lab.py bench` suggests a value.
+
 ## Project Structure
 
 - `wordle_solver.py`     — Main solver logic
+- `wordle_lab.py`        — Offline tools: simulate strategies, build tables, bench
+- `precomputed/`         — Second-guess tables (committed; e.g. `second_guess_arose.json`)
 - `.gitignore`           — Ignores dynamic lists and logs
 - `README.md`            — This file
 - `TODO.md`              — Feature roadmap
@@ -103,13 +115,40 @@ Lists left in the current folder by older versions are moved into `data/` on fir
 
 ## Solver Features
 
-- Suggests high-frequency eliminators (e.g., AEROS, AROSE, SOARE)
-- Applies hard mode logic using feedback-aware filtering:
+- Filters candidates with feedback-aware matching:
   - Green: letter in correct position
   - Yellow: letter in word but in a different position
   - Gray: letter not in word or used too many times
   - Supports duplicate letter disambiguation correctly (e.g., `undid`, `error`)
-- Suggests next guess based on frequency analysis
+- Ranks next guesses by **expected words left**: each Hard Mode legal guess
+  groups the candidates by the feedback it would produce; smaller groups are
+  better. Ties prefer words that could be the answer. `·` marks guesses that
+  can't be the answer.
+- Turn 1 (no feedback yet) ranks by letter frequency (e.g., AEROS, AROSE, SOARE)
+- Turn 2 after a known opener uses a precomputed table (instant on slow devices)
+- Later turns rank live, capped by `WORDLE_RANK_LIMIT`; over the cap it falls
+  back to letter frequency
+
+## Offline Tools (`wordle_lab.py`)
+
+Run on a desktop; only `bench` is meant for the phone.
+
+```bash
+python3 wordle_lab.py simulate --strategy bucket      # play all past answers
+python3 wordle_lab.py simulate --strategy frequency   # old ranking, for comparison
+python3 wordle_lab.py build-table --opener arose      # ~2 min; commit the result
+python3 wordle_lab.py bench                           # time ranking on this device
+```
+
+Simulation over 1942 past answers, opener `arose`, Hard Mode:
+
+| Ranking              | Avg guesses | Over 6 guesses |
+|----------------------|-------------|----------------|
+| Letter frequency     | 4.69        | 182            |
+| Expected words left  | 4.39        | 98             |
+
+Most remaining failures are "trap" patterns like `_ATER` or `_ITCH` where Hard
+Mode forces one guess per word, made worse by obscure words in the guess list.
 
 ## Roadmap
 

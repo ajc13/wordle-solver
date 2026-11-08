@@ -589,6 +589,9 @@ WEIGHT_CENTER = 2.0
 WEIGHT_SCALE = 0.3
 WEIGHT_FLOOR = 0.01
 RARE_WEIGHT = 0.1  # below this a candidate is shown as "rare"
+# NYT answers are almost never plurals: 0 of 1942 past answers, yet plurals
+# hold ~24% of the frequency weight. Flagged plurals keep this share.
+PLURAL_FACTOR = 0.05
 
 
 def zipf_to_weight(zipf, center=WEIGHT_CENTER, scale=WEIGHT_SCALE):
@@ -602,17 +605,24 @@ def word_weight(word, weights):
     return weights.get(word, WEIGHT_FLOOR)
 
 
-def load_word_weights(path=None, center=WEIGHT_CENTER, scale=WEIGHT_SCALE):
+def load_word_weights(
+    path=None, center=WEIGHT_CENTER, scale=WEIGHT_SCALE, plural_factor=PLURAL_FACTOR
+):
     """{word: likelihood} from word_weights.json, or None if unavailable."""
     path = WORD_WEIGHTS_FILE if path is None else Path(path)
     if not path.exists():
         return None
     try:
-        zipf = json.loads(path.read_text())["zipf"]
+        data = json.loads(path.read_text())
+        zipf = data["zipf"]
     except (OSError, ValueError, KeyError) as e:
         print(f"⚠️  Ignoring {path.name}: {e}")
         return None
-    return {w: zipf_to_weight(z, center, scale) for w, z in zipf.items()}
+    weights = {w: zipf_to_weight(z, center, scale) for w, z in zipf.items()}
+    for w in data.get("plural", []):
+        if w in weights:
+            weights[w] = max(WEIGHT_FLOOR, weights[w] * plural_factor)
+    return weights
 # Live ranking work cap (guess x candidate scorings). The solver times this
 # device at startup and picks a cap worth ~RANK_TARGET_SECONDS; set
 # WORDLE_RANK_LIMIT to override (0 = unlimited). RANK_WORK_LIMIT is the

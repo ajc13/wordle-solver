@@ -83,6 +83,11 @@
 - `score_guess` ~2-4x faster; Hard Mode guess pool computed once per turn instead of per word
 - `wordle_lab.py bench` reports the device's auto cap and which ranking each turn used
 - Session log records the rank cap
+- Plurals are down-weighted to 5% (`word_weights.json` now lists them): they held ~24% of the weight but none of 1942 past answers is a plural. Held-out even half 3.84 → 3.82; `arose` table rebuilt
+
+### Added
+- `wordle_lab.py openers`: scores every word as a first guess (expected likely words left) to shortlist openers for a full `simulate`
+- README opener comparison: full simulations for 13 openers; trace 3.73, slate 3.74, arose 3.81, raise 3.82
 
 ### Results
 - Simulated with a phone-sized cap (9000): same as desktop, 3.82 avg, 19 over 6

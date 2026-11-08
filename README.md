@@ -132,7 +132,8 @@ Lists left in the current folder by older versions are moved into `data/` on fir
 - Below the table: `Showing 1-10 of 14: 12 possible answers, 2 other guesses (·)`
 - Answer likelihood comes from English word frequency
   (`precomputed/word_weights.json`): common words count ~1, obscure words 0.01
-  (still possible, just unlikely). The prompt shows `12 possible answers left
+  (still possible, just unlikely). Plurals (rates, boxes, flies) get 5% of
+  their weight, since NYT answers are almost never plurals. The prompt shows `12 possible answers left
   (~5 likely)`, and obscure candidates are marked `rare`. Ties go to the likelier word.
 - Turn 1 (no feedback yet) ranks by letter frequency (e.g., AEROS, AROSE, SOARE)
 - Turn 2 after a known opener uses a precomputed table (instant on slow devices)
@@ -148,6 +149,7 @@ python3 wordle_lab.py simulate --strategy bucket      # play all past answers
 python3 wordle_lab.py simulate --strategy frequency   # old ranking, for comparison
 python3 wordle_lab.py build-weights                   # word frequencies (pip install wordfreq)
 python3 wordle_lab.py build-table --opener arose      # ~2 min; commit the result
+python3 wordle_lab.py openers                         # screen every word as a first guess
 python3 wordle_lab.py bench                           # time ranking on this device
 ```
 
@@ -171,6 +173,26 @@ in the frequency data, which doesn't help.
 
 With a phone-sized cap (`--work-limit 9000`) the results are the same
 (3.82, 19 over 6): turn 2 is precomputed and later turns have few candidates.
+
+### Openers
+
+Full Hard Mode simulations (1942 past answers, weighted, plurals down-weighted),
+each opener with its own turn-2 table:
+
+| Opener | Avg guesses | vs arose        | Over 6 | `openers` screen rank |
+|--------|-------------|-----------------|--------|-----------------------|
+| trace  | 3.73        | -0.08 ± 0.02    | 14     | 384                   |
+| slate  | 3.74        | -0.07 ± 0.02    | 16     | 91                    |
+| salet  | 3.76        | -0.05 ± 0.02    | 15     | 27                    |
+| crane  | 3.77        | -0.04 ± 0.02    | 19     | 342                   |
+| roate  | 3.77        | -0.03 ± 0.02    | 13     | 20                    |
+| arose  | 3.81        | —               | 19     | 24                    |
+| raise  | 3.82        | +0.02 ± 0.02    | 20     | 1                     |
+| soare  | 3.83        | +0.02 ± 0.02    | 25     | 2                     |
+
+The one-guess screen is a poor predictor in Hard Mode: S-heavy openers score
+well on turn 1, while T/C/L openers do better over whole games (they help with
+`_ATCH`/`_ATER` traps). Use the screen for a shortlist, then `simulate`.
 
 ## Roadmap
 

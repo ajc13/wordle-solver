@@ -4,6 +4,7 @@
                                  [--limit N] [--no-tables] [--work-limit N]
   python3 wordle_lab.py build-table [--opener arose] [--top 20]
   python3 wordle_lab.py build-weights    # needs: pip install wordfreq
+  python3 wordle_lab.py openers [--top 30]
   python3 wordle_lab.py bench            # the one command meant for the phone
 
 simulate     Plays every past NYT answer (data/used_word_list.txt) in Hard Mode
@@ -17,7 +18,10 @@ build-weights
              precomputed/word_weights.json, used to weight answer likelihood.
              Rebuild the second-guess table afterwards.
 
-Weighting options (simulate, build-table): --no-weights, --center, --scale.
+openers      Scores every word as a first guess (expected likely words left)
+             to shortlist openers worth a full simulate run.
+
+Weighting options (simulate, build-table, openers): --no-weights, --center, --scale.
 """
 
 import argparse
@@ -51,7 +55,9 @@ def load_lists():
 def load_weights(args):
     if args.no_weights:
         return None
-    weights = ws.load_word_weights(center=args.center, scale=args.scale)
+    weights = ws.load_word_weights(
+        center=args.center, scale=args.scale, plural_factor=args.plural_factor
+    )
     if weights is None:
         print("(no precomputed/word_weights.json: unweighted)")
     return weights
@@ -221,7 +227,72 @@ def cmd_build_table(args):
 
 
 ################################################################################
+# Opener screen
+
+_ALIGNED = None
+
+
+def _init_opener_worker(words, aligned):
+    global _WORDS, _ALIGNED
+    _WORDS, _ALIGNED = words, aligned
+
+
+def _score_opener(guess):
+    expected, worst = ws.expected_remaining(guess, _WORDS, _ALIGNED)
+    return guess, expected, worst
+
+
+def cmd_openers(args):
+    words, answers, _ = load_lists()
+    weights = load_weights(args)
+    aligned = None if weights is None else [ws.word_weight(w, weights) for w in words]
+    print(f"Scoring {len(words)} openers against {len(words)} words "
+          f"(weights={'off' if weights is None else 'on'})...")
+    start = time.time()
+    with Pool(initializer=_init_opener_worker, initargs=(words, aligned)) as pool:
+        scored = pool.map(_score_opener, words, chunksize=200)
+    scored.sort(key=lambda r: (r[1], r[2], r[0]))
+    rank = {w: i for i, (w, _, _) in enumerate(scored, 1)}
+    print(f"done in {time.time() - start:.0f}s\n")
+    print(" rank  opener  exp.left  worst")
+    for w, e, worst in scored[: args.top]:
+        print(f"{rank[w]:>5}  {w}   {e:7.1f}  {worst:>5}")
+    if args.show:
+        print()
+        for w in args.show:
+            if w in rank:
+                _, e, worst = scored[rank[w] - 1]
+                print(f"{rank[w]:>5}  {w}   {e:7.1f}  {worst:>5}")
+    out = ws.DATA_DIR / "sim" / f"openers{'' if weights else '-unweighted'}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps([[w, round(e, 3), worst] for w, e, worst in scored]))
+    print(f"Saved {out}")
+
+
+################################################################################
 # Word weights
+
+
+PLURAL_STEM_ZIPF = 3.0  # a stem this common counts as a real word
+
+
+def looks_plural(word, is_word):
+    """
+    NYT answers are almost never plurals (or -s verb forms). A word looks
+    plural if it ends in s and removing the ending leaves a real word:
+    rates→rate, boxes→box, flies→fly, wives→wife, elves→elf.
+    atlas, chaos-like words pass because their stems aren't words.
+    """
+    if not word.endswith("s") or word.endswith(("ss", "us", "is")):
+        return False
+    stems = [word[:-1]]
+    if word.endswith("es"):
+        stems.append(word[:-2])
+    if word.endswith("ies"):
+        stems.append(word[:-3] + "y")
+    if word.endswith("ves"):
+        stems += [word[:-3] + "f", word[:-3] + "fe"]
+    return any(is_word(stem) for stem in stems)
 
 
 def cmd_build_weights(args):
@@ -231,6 +302,11 @@ def cmd_build_weights(args):
         sys.exit("needs the wordfreq package (desktop only): pip install wordfreq")
     words = sorted(ws.load_words())
     zipf = {w: wordfreq.zipf_frequency(w, "en") for w in words}
+
+    def is_word(stem):
+        return wordfreq.zipf_frequency(stem, "en") >= PLURAL_STEM_ZIPF
+
+    plurals = sorted(w for w in words if looks_plural(w, is_word))
     zipf = {w: z for w, z in zipf.items() if z > 0}  # missing = unknown = lowest weight
     try:
         from importlib.metadata import version
@@ -246,8 +322,14 @@ def cmd_build_weights(args):
         '"license": "Derived from wordfreq data, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)",\n'
         f'"wordfreq_version": {json.dumps(wf_version)},\n'
         f'"built_at": {json.dumps(datetime.now().isoformat(timespec="seconds"))},\n'
+        f'"plural_stem_zipf": {PLURAL_STEM_ZIPF},\n'
+        '"plural": [\n' + ",\n".join(
+            "  " + ", ".join(json.dumps(w) for w in plurals[i:i + 12])
+            for i in range(0, len(plurals), 12)
+        ) + "\n],\n"
         '"zipf": {\n' + body + "\n}\n}\n"
     )
+    print(f"{len(plurals)} plurals flagged")
     print(f"Saved {out} ({len(zipf)} of {len(words)} words known, {out.stat().st_size // 1024} KB)")
 
 
@@ -299,6 +381,8 @@ def add_weight_args(parser):
     parser.add_argument("--no-weights", action="store_true", help="every word equally likely")
     parser.add_argument("--center", type=float, default=ws.WEIGHT_CENTER)
     parser.add_argument("--scale", type=float, default=ws.WEIGHT_SCALE)
+    parser.add_argument("--plural-factor", type=float, default=ws.PLURAL_FACTOR,
+                        help="weight multiplier for plurals (1 = no penalty)")
 
 
 def main():
@@ -326,6 +410,13 @@ def main():
     build.add_argument("--out-dir", default=None, help="write here instead of precomputed/")
     add_weight_args(build)
     build.set_defaults(func=cmd_build_table)
+
+    op = sub.add_parser("openers", help="screen every word as a first guess")
+    op.add_argument("--top", type=int, default=30)
+    op.add_argument("--show", nargs="*", default=["arose", "crane", "slate", "salet",
+                    "trace", "crate", "raise", "soare", "roate", "stare", "adieu", "tares"])
+    add_weight_args(op)
+    op.set_defaults(func=cmd_openers)
 
     weights = sub.add_parser("build-weights", help="word frequencies (needs wordfreq)")
     weights.set_defaults(func=cmd_build_weights)

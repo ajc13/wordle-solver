@@ -220,6 +220,23 @@ class WeightTests(unittest.TestCase):
         self.assertEqual(ws.word_weight("birsy", weights), ws.WEIGHT_FLOOR)
         self.assertEqual(ws.word_weight("birsy", None), 1.0)
 
+    def test_looks_plural(self):
+        known = {"rate", "box", "fly", "wife", "elf"}
+        is_word = known.__contains__
+        for w in ["rates", "boxes", "flies", "wives", "elves"]:
+            self.assertTrue(lab.looks_plural(w, is_word), w)
+        for w in ["atlas", "ethos", "abyss", "focus", "lapis", "crest"]:
+            self.assertFalse(lab.looks_plural(w, is_word), w)
+
+    def test_plural_penalty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "w.json"
+            path.write_text(json.dumps({"zipf": {"rates": 6.0, "water": 6.0}, "plural": ["rates"]}))
+            weights = ws.load_word_weights(path, plural_factor=0.05)
+            unpenalized = ws.load_word_weights(path, plural_factor=1.0)
+        self.assertAlmostEqual(weights["rates"], 0.05 * weights["water"], places=3)
+        self.assertAlmostEqual(unpenalized["rates"], unpenalized["water"])
+
     def test_answers_left(self):
         self.assertEqual(ws.answers_left(["first", "birsy"]), "2 possible answers left")
         self.assertEqual(

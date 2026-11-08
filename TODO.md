@@ -23,6 +23,7 @@
 - [ ] Names count as common in wordfreq (danny, jerry, tania); down-weight words
       mostly seen capitalized, or filter against a dictionary
 - [ ] Turn-1 ranking still by letter frequency
+- [x] Down-weight plurals (NYT doesn't use them as answers)
 - [ ] Cache opener ranking for turn 1 (full scoring ~19 min) if a non-arose opener is wanted
 
 ## Testing

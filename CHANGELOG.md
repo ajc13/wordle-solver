@@ -76,7 +76,7 @@
 ### Changed
 - Word lists now live in `data/` next to the script instead of the current directory; lists left in the current directory by older versions are moved there on first run
 
-## [Unreleased]
+## [1.3.0] – 2026-11-08
 ### Added
 - Hard Mode ranking by expected words left: each legal guess groups the candidates by the feedback it would produce; ties prefer possible answers. `·` marks guesses that can't be the answer
 - `wordle_lab.py` offline tools: `simulate` (play all past answers, report averages and failures), `build-table`, and `bench` (time ranking on the phone)

@@ -3,14 +3,14 @@
 ## Overview
 
 This terminal-based Wordle solver:
-- Operates in Hard Mode
-- Avoids past NYT answers (scraped from FiveForks)
+- Suggests only words consistent with all feedback so far (Hard Mode compatible)
+- Flags past NYT answers (scraped from FiveForks)
 - Prioritizes statistical optimization to lower average solve count
 - Runs cleanly under WSL with dynamic word list fetching
 
 ## Requirements
 
-- Python 3.x
+- Python 3.9+
 - Internet access (for list fetching)
 - Virtual environment recommended
 
@@ -53,13 +53,14 @@ At the "Input the word you entered" prompt:
 - `-` or `-n`     : Show previous suggestions
 - `^`             : Reset to top of suggestion list
 - `q` / `quit`    : Quit the game
-- `r` / `restart` : Restart the current solver session
+- `r` / `restart` : Start a new game (word lists are not re-fetched)
 - `!` / `history` : Show past guesses and how many words remained after each
 - `?` / `help`    : Show commands
 
 - You may enter '.' instead of '?' when entering gray feedback (e.g., G.Y??)
 
-- If no words remain due to feedback, you'll be prompted to restart
+- If no words remain, you'll be told to check your inputs (`!`) or restart (`r`);
+  the game stays open until you quit or restart
 
 - After 6 guesses, you'll be prompted to continue manually
 
@@ -84,12 +85,14 @@ At the "Input the word you entered" prompt:
 ## Word List Handling
 
 - Word lists are fetched automatically if missing or stale (every 7 days)
+- If a fetch fails, the solver continues with the existing local copy
+  (the past-answers scrape retries once without SSL verification first)
 - Lists are ignored by Git
 - Past NYT answers are marked with 🔁 in suggestions (not removed)
 
 ## Solver Features
 
-- Suggests high-frequency eliminators (e.g., SOARE, AUDIO)
+- Suggests high-frequency eliminators (e.g., AEROS, AROSE, SOARE)
 - Applies hard mode logic using feedback-aware filtering:
   - Green: letter in correct position
   - Yellow: letter in word but in a different position

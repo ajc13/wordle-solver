@@ -3,7 +3,7 @@
 ################################################################################
 # This script is a Wordle solver that uses a list of valid words and past answers
 # to suggest the best guesses based on letter frequency and user input.
-# It scrapes the past answers from a website and uses them to filter out known solutions.
+# It scrapes the past answers from a website and flags them in the suggestion list.
 # The script also allows the user to input their guesses and the corresponding feedback
 # (green, yellow, gray) to narrow down the possible words.
 ################################################################################
@@ -113,12 +113,14 @@ def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
 
     print(f"Scraping past answers from {FIVEFORKS_URL}...")
     try:
-        words = _attempt_scrape(verify_ssl=True)
-    except requests.exceptions.SSLError:
-        print("⚠️  SSL verification failed — retrying with verification disabled...")
-        words = _attempt_scrape(verify_ssl=False)
+        try:
+            words = _attempt_scrape(verify_ssl=True)
+        except requests.exceptions.SSLError:
+            print("⚠️  SSL verification failed — retrying with verification disabled...")
+            words = _attempt_scrape(verify_ssl=False)
     except Exception as e:
         print(f"⚠️  Failed to scrape answers: {e}")
+        print(f"⚠️  Proceeding without refreshing {file_path}")
         return
 
     with open(file_path, "w") as f:
@@ -318,6 +320,7 @@ def filter_word_list(possible_words, guess, feedback):
 
 
 def solve():
+    """Load word lists once, then play games until the user stops restarting."""
     import sys
 
     force_refresh = "--refresh" in sys.argv
@@ -343,6 +346,14 @@ def solve():
         print("⚠️  No used word list found — continuing without NYT filter.")
         USED_WORDS = set()
 
+    args = " ".join(sys.argv[1:])
+
+    while play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args) == "restart":
+        print("Restarting...")
+
+
+def play_game(WORDS, LETTER_FREQUENCY, USED_WORDS, args=""):
+    """Play one game. Returns "restart" if the user asked to restart."""
     guess_history = []
 
     possible_words = WORDS.copy()
@@ -352,8 +363,6 @@ def solve():
 
     attempt = 1
     override_attempts = 0
-
-    args = " ".join(sys.argv[1:])
 
     log_event("# Session started")
     log_event(f"# Args: {args or 'none'}")
@@ -400,12 +409,10 @@ def solve():
             return
 
         if word == "CMD_RESTART":
-            print("Restarting...")
-
             log_event("# Session ended (user restarted)")
             log_game_summary(guess_history)
             print_game_summary(guess_history)
-            return solve()
+            return "restart"
 
         if word == "CMD_HISTORY":
             if guess_history:
@@ -468,13 +475,10 @@ def solve():
 
         if not possible_words:
             print("\n❌ No possible words remaining based on given feedback.")
-            print("❌ Double-check your inputs. Restart with 'r'.\n")
-
-            log_event("# Session ended (no words remaining)")
-            log_game_summary(guess_history)
-            print_game_summary(guess_history)
-
-            continue
+            print("❌ Double-check your inputs ('!' shows history). Restart with 'r'.\n")
+            # Session stays open: the summary is logged once, when the user
+            # quits or restarts.
+            log_event("# No words remaining")
 
 
 def debug_filter(word, guesses):

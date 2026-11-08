@@ -15,10 +15,11 @@
 ## Testing
 - [x] Add unit test coverage for filtering logic (`tests/test_filter.py`)
 - [x] Validate green/yellow/grey parsing logic and edge cases (fuzzed against reference scorer)
+- [x] Session flow tests: quit, restart, no words remaining, scrape failure (`tests/test_session.py`)
 - [ ] Add test harness for simulated Wordle rounds or regression
 
 ## Docs
-- [x] Add virtualenv setup instructions to README under "Getting Started"
+- [x] Add virtualenv setup instructions to README under "Installation"
 - [x] Rewrite README for current structure
 - [x] Add CLI flag documentation to README
 
@@ -45,6 +46,6 @@
 - [x] End of game summary
 
 ## Known Issues
-- [ ] SSL-disabled retry in scraper is unguarded; a second failure crashes startup
-- [ ] "No words remaining" logs a session end but the session continues (double summary)
-- [ ] `restart` recurses into `solve()` and re-runs list refresh
+- [x] SSL-disabled retry in scraper is unguarded; a second failure crashes startup
+- [x] "No words remaining" logs a session end but the session continues (double summary)
+- [x] `restart` recurses into `solve()` and re-runs list refresh

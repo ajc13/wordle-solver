@@ -45,3 +45,15 @@
 
 ### Removed
 - Monday log rotation (could overwrite the previous week's archive)
+
+## [1.1.1] – 2026-11-07
+### Fix
+- Scraper no longer crashes at startup if the SSL-disabled retry also fails
+- "No words remaining" no longer logs a session end and summary while the game continues
+- `restart` starts a new game in a loop instead of recursing into `solve()`; word lists are no longer re-fetched
+
+### Added
+- Session flow tests (`tests/test_session.py`)
+
+### Docs
+- README: corrected Hard Mode and past-answer claims, Python 3.9+, restart and fetch-failure behavior, example openers

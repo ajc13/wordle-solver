@@ -15,7 +15,9 @@
 - [x] Precomputed second-guess table for `arose` (`precomputed/`); turn 2 instant on iSH
 - [x] Reject entered guesses that break Hard Mode, with the reason
 - [x] Simulation harness over past answers (`wordle_lab.py simulate`)
-- [ ] Run `wordle_lab.py bench` on iSH; tune default `WORDLE_RANK_LIMIT` if turns are slow
+- [x] Run `wordle_lab.py bench` on iSH (500 µs/score, turns up to 54s at 100k cap):
+      cap now auto-sized per device; scoring ~2-4x faster; Hard Mode pool built once
+- [ ] Re-run bench on iSH to confirm turn times with the auto cap
 - [x] Weight by answer likelihood from word frequency (wordfreq); 4.39 → 3.82 avg,
       tuned on odd past answers, checked on even
 - [ ] Names count as common in wordfreq (danny, jerry, tania); down-weight words

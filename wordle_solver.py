@@ -20,6 +20,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 import json
+import time
 import math
 import os
 import shutil
@@ -258,6 +259,7 @@ RANKING_HEADERS = {
     "frequency": "Ranked by letter frequency (higher is better)",
     "bucket": "Ranked by expected words left (lower is better) · = can't be the answer",
     "table": "Ranked by expected words left (lower is better, precomputed) · = can't be the answer",
+    "likelihood": "Too many to rank by split yet: most common words first (1 = common)",
 }
 
 
@@ -280,8 +282,8 @@ def display_word_table(
         mark = past_answer_mark(word, used_words, own_solves)
         if score is None:
             shown = "-"
-        elif method == "frequency":
-            shown = f"{score:.2}"
+        elif method in ("frequency", "likelihood"):
+            shown = f"{score:.2f}"
         else:
             shown = f"{score:.1f}"
         probe = "" if is_candidate else " ·"
@@ -452,17 +454,20 @@ def filter_word_list(possible_words, guess, feedback):
 
 def score_guess(answer, guess):
     """NYT Wordle feedback for guess against answer, e.g. "?G?GY"."""
+    # Hot path for ranking: plain lists are ~2x faster than Counter here.
+    if answer == guess:
+        return "G" * WORD_LENGTH
     result = ["?"] * WORD_LENGTH
-    unmatched = Counter()
+    unmatched = []  # answer letters not matched green
     for i in range(WORD_LENGTH):
         if guess[i] == answer[i]:
             result[i] = "G"
         else:
-            unmatched[answer[i]] += 1
+            unmatched.append(answer[i])
     for i in range(WORD_LENGTH):
-        if result[i] != "G" and unmatched[guess[i]] > 0:
+        if result[i] == "?" and guess[i] in unmatched:
             result[i] = "Y"
-            unmatched[guess[i]] -= 1
+            unmatched.remove(guess[i])
     return "".join(result)
 
 
@@ -493,6 +498,31 @@ def hard_mode_violation(guess, history):
 
 def is_hard_mode_legal(guess, history):
     return hard_mode_violation(guess, history) is None
+
+
+def hard_mode_pool(words, history):
+    """
+    Words that are legal in Hard Mode after history. Same rules as
+    hard_mode_violation, but worked out once instead of per word.
+    """
+    greens = {}
+    required = Counter()
+    for prev, feedback in history:
+        revealed = Counter()
+        for i, (letter, mark) in enumerate(zip(prev, feedback)):
+            if mark == "G":
+                greens[i] = letter
+            if mark in "GY":
+                revealed[letter] += 1
+        for letter, count in revealed.items():
+            required[letter] = max(required[letter], count)
+    greens = list(greens.items())
+    required = list(required.items())
+    return [
+        w for w in words
+        if all(w[i] == letter for i, letter in greens)
+        and all(w.count(letter) >= n for letter, n in required)
+    ]
 
 
 def expected_remaining(guess, candidates, weights=None):
@@ -583,9 +613,35 @@ def load_word_weights(path=None, center=WEIGHT_CENTER, scale=WEIGHT_SCALE):
         print(f"⚠️  Ignoring {path.name}: {e}")
         return None
     return {w: zipf_to_weight(z, center, scale) for w, z in zipf.items()}
-# Lower this on slow devices (python3 wordle_lab.py bench suggests a value):
-#   WORDLE_RANK_LIMIT=30000 python3 wordle_solver.py
-RANK_WORK_LIMIT = int(os.environ.get("WORDLE_RANK_LIMIT", "100000"))
+# Live ranking work cap (guess x candidate scorings). The solver times this
+# device at startup and picks a cap worth ~RANK_TARGET_SECONDS; set
+# WORDLE_RANK_LIMIT to override (0 = unlimited). RANK_WORK_LIMIT is the
+# override, or a desktop-sized reference used by wordle_lab.py simulations.
+RANK_LIMIT_OVERRIDE = os.environ.get("WORDLE_RANK_LIMIT")
+RANK_WORK_LIMIT = int(RANK_LIMIT_OVERRIDE or "100000")
+RANK_TARGET_SECONDS = 3.0
+
+
+def scoring_seconds(sample_seconds=0.2):
+    """Average time for one score_guess on this device."""
+    pairs = [("arose", "until"), ("crest", "wrest"), ("eerie", "geese"), ("first", "birsy")]
+    calls, start = 0, time.perf_counter()
+    while True:
+        for answer, guess in pairs:
+            score_guess(answer, guess)
+        calls += len(pairs)
+        elapsed = time.perf_counter() - start
+        if elapsed >= sample_seconds:
+            return elapsed / calls
+
+
+def device_rank_limit(target_seconds=RANK_TARGET_SECONDS):
+    """WORDLE_RANK_LIMIT if set, else a cap worth ~target_seconds here."""
+    if RANK_LIMIT_OVERRIDE is not None:
+        return int(RANK_LIMIT_OVERRIDE)
+    # 1.5: ranking does a little more than scoring (bucketing, sorting).
+    limit = int(target_seconds / scoring_seconds() / 1.5)
+    return max(2_000, min(limit // 1000 * 1000, 2_000_000))
 
 
 def load_second_guess_tables(table_dir=None):
@@ -608,7 +664,8 @@ def suggest(
     """
     Rank next guesses. Returns (method, [(word, score, is_candidate), ...]).
     method is "table" or "bucket" (score = expected words left, lower is
-    better) or "frequency" (score = letter frequency, higher is better).
+    better), "likelihood" (score = answer likelihood, when there are too many
+    candidates to rank by split) or "frequency" (score = letter frequency).
     """
     if not candidates:
         return "bucket", []
@@ -631,10 +688,18 @@ def suggest(
 
     unlimited = not work_limit
     if history and (unlimited or len(candidates) ** 2 <= work_limit):
-        pool = [w for w in words if is_hard_mode_legal(w, history)]
+        pool = hard_mode_pool(words, history)
         if unlimited or len(candidates) * len(pool) <= work_limit:
             return "bucket", rank_guesses(candidates, pool, weights)
         return "bucket", rank_guesses(candidates, candidates, weights)
+
+    if history and weights is not None:
+        # Too many to rank by split: likeliest answers first (letter
+        # frequency breaks ties). Turn 1 stays on letter frequency, which
+        # picks good openers rather than merely common words.
+        by_freq = [w for w, _ in sort_by_word_commonality(candidates, letter_freq)]
+        by_freq.sort(key=lambda w: -word_weight(w, weights))
+        return "likelihood", [(w, word_weight(w, weights), True) for w in by_freq]
 
     return "frequency", [
         (w, score, True) for w, score in sort_by_word_commonality(candidates, letter_freq)
@@ -661,6 +726,7 @@ def solve():
     USED_WORDS = load_used_words()
     tables = load_second_guess_tables()
     weights = load_word_weights()
+    work_limit = device_rank_limit()
 
     args = " ".join(sys.argv[1:])
 
@@ -668,7 +734,8 @@ def solve():
         # Re-read each game so a solve from the previous game is included.
         own_solves = load_own_solves()
         result = play_game(
-            WORDS, LETTER_FREQUENCY, USED_WORDS, args, own_solves, tables, weights
+            WORDS, LETTER_FREQUENCY, USED_WORDS, args, own_solves, tables, weights,
+            work_limit,
         )
         if result != "restart":
             break
@@ -677,7 +744,7 @@ def solve():
 
 def play_game(
     WORDS, LETTER_FREQUENCY, USED_WORDS, args="", own_solves=None, tables=None,
-    weights=None,
+    weights=None, work_limit=RANK_WORK_LIMIT,
 ):
     """Play one game. Returns "restart" if the user asked to restart."""
     own_solves = own_solves or set()
@@ -694,6 +761,7 @@ def play_game(
 
     log_event("# Session started")
     log_event(f"# Args: {args or 'none'}")
+    log_event(f"# Rank limit: {work_limit or 'unlimited'}")
 
     while True:
         print(f"Attempt {attempt}: {answers_left(possible_words, weights)}")
@@ -702,7 +770,7 @@ def play_game(
         if ranking is None:  # only re-rank after a new guess, not when paging
             ranking = suggest(
                 possible_words, history, WORDS, LETTER_FREQUENCY, tables,
-                weights=weights,
+                work_limit, weights,
             )
         method, ranked_words = ranking
 

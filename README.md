@@ -78,8 +78,10 @@ At the "Input the word you entered" prompt:
 
 ### Environment
 
-- `WORDLE_RANK_LIMIT` : Cap on live ranking work (default 100000). Lower it if
-  turns feel slow on your device; `python3 wordle_lab.py bench` suggests a value.
+- `WORDLE_RANK_LIMIT` : Cap on live ranking work. By default the solver times
+  your device at startup and picks a cap worth about 3 seconds (e.g. ~1.5M on a
+  desktop, ~10k on iSH). Set it to override; `0` means unlimited.
+  `python3 wordle_lab.py bench` shows the cap and real turn times.
 
 ## Project Structure
 
@@ -134,8 +136,8 @@ Lists left in the current folder by older versions are moved into `data/` on fir
   (~5 likely)`, and obscure candidates are marked `rare`. Ties go to the likelier word.
 - Turn 1 (no feedback yet) ranks by letter frequency (e.g., AEROS, AROSE, SOARE)
 - Turn 2 after a known opener uses a precomputed table (instant on slow devices)
-- Later turns rank live, capped by `WORDLE_RANK_LIMIT`; over the cap it falls
-  back to letter frequency
+- Later turns rank live, capped by `WORDLE_RANK_LIMIT`; over the cap it lists
+  the most common words first (turn 1 stays on letter frequency)
 
 ## Offline Tools (`wordle_lab.py`)
 
@@ -166,6 +168,9 @@ don't grade their own tuning. Compare settings with
 Remaining failures are mostly "trap" patterns like `_OWER` or `_ATCH` where
 Hard Mode forces one guess per word. Names (danny, jerry) count as common words
 in the frequency data, which doesn't help.
+
+With a phone-sized cap (`--work-limit 9000`) the results are the same
+(3.82, 19 over 6): turn 2 is precomputed and later turns have few candidates.
 
 ## Roadmap
 

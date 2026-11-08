@@ -76,6 +76,17 @@
 ### Changed
 - Word lists now live in `data/` next to the script instead of the current directory; lists left in the current directory by older versions are moved there on first run
 
+## [Unreleased]
+### Changed
+- Live ranking cap is sized to the device at startup (~3s of work); `WORDLE_RANK_LIMIT` still overrides. iSH measured 500 µs per scoring, so the old fixed 100k cap meant turns of up to a minute
+- Over the cap (after turn 1), suggestions list the most common words first instead of by letter frequency
+- `score_guess` ~2-4x faster; Hard Mode guess pool computed once per turn instead of per word
+- `wordle_lab.py bench` reports the device's auto cap and which ranking each turn used
+- Session log records the rank cap
+
+### Results
+- Simulated with a phone-sized cap (9000): same as desktop, 3.82 avg, 19 over 6
+
 ## [1.3.0] – 2026-11-08
 ### Added
 - Hard Mode ranking by expected words left: each legal guess groups the candidates by the feedback it would produce; ties prefer possible answers. `·` marks guesses that can't be the answer

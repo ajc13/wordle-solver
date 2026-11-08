@@ -59,6 +59,18 @@ class HardModeTests(unittest.TestCase):
     def test_no_history(self):
         self.assertTrue(ws.is_hard_mode_legal("zzzzz", []))
 
+    def test_pool_matches_per_word_check(self):
+        rng = random.Random(3)
+        words = ["".join(rng.choice("abcdes") for _ in range(5)) for _ in range(400)]
+        for _ in range(200):
+            answer = rng.choice(words)
+            history = [(g, ws.score_guess(answer, g)) for g in rng.sample(words, rng.randint(1, 3))]
+            self.assertEqual(
+                ws.hard_mode_pool(words, history),
+                [w for w in words if ws.is_hard_mode_legal(w, history)],
+                history,
+            )
+
 
 class RankingTests(unittest.TestCase):
     def test_expected_remaining(self):
@@ -134,6 +146,21 @@ class RankingTests(unittest.TestCase):
         method, _ = ws.suggest(candidates, [("arose", "?G?GY")], words, freq, work_limit=10)
         self.assertEqual(method, "frequency")
 
+    def test_fallback_sorts_by_likelihood_after_turn_one(self):
+        words = {"arose", "crest", "wrest", "prest", "trest", "dress"}
+        candidates = ["crest", "wrest", "prest", "trest", "dress"]
+        freq = {c: 0.1 for c in "acdeoprstw"}
+        weights = {"wrest": 1.0, "dress": 0.5}
+        method, ranked = ws.suggest(
+            candidates, [("arose", "?G?GY")], words, freq, work_limit=10, weights=weights
+        )
+        self.assertEqual(method, "likelihood")
+        self.assertEqual([w for w, _, _ in ranked[:2]], ["wrest", "dress"])
+        self.assertEqual(len(ranked), len(candidates))
+        # Turn 1 stays on letter frequency even with weights.
+        method, _ = ws.suggest(sorted(words), [], words, freq, work_limit=10, weights=weights)
+        self.assertEqual(method, "frequency")
+
     def test_suggest_uses_table_on_turn_two(self):
         words = {"arose", "crest", "wrest", "prest", "trest", "dress"}
         tables = {"arose": {"?G?GY": [["crest", 2.7, True], ["notaword", 1.0, True]]}}
@@ -206,6 +233,24 @@ class WeightTests(unittest.TestCase):
         self.assertIn("CC BY-SA", data["license"])
         self.assertGreater(len(data["zipf"]), 5000)
         self.assertTrue(all(z > 0 for z in data["zipf"].values()))
+
+
+class RankLimitTests(unittest.TestCase):
+    def test_override(self):
+        with mock.patch.object(ws, "RANK_LIMIT_OVERRIDE", "1234"):
+            self.assertEqual(ws.device_rank_limit(), 1234)
+
+    def test_scaled_to_device_speed_and_clamped(self):
+        with mock.patch.object(ws, "RANK_LIMIT_OVERRIDE", None):
+            with mock.patch.object(ws, "scoring_seconds", return_value=200e-6):  # phone
+                self.assertEqual(ws.device_rank_limit(3.0), 10_000)
+            with mock.patch.object(ws, "scoring_seconds", return_value=1e-2):
+                self.assertEqual(ws.device_rank_limit(3.0), 2_000)
+            with mock.patch.object(ws, "scoring_seconds", return_value=1e-8):
+                self.assertEqual(ws.device_rank_limit(3.0), 2_000_000)
+
+    def test_scoring_seconds_is_positive(self):
+        self.assertGreater(ws.scoring_seconds(0.01), 0)
 
 
 class TableLoadingTests(unittest.TestCase):

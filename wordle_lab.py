@@ -178,7 +178,7 @@ def _rank_pattern(job):
     opener, feedback, top = job
     history = [(opener, feedback)]
     candidates = ws.filter_word_list(_WORDS, opener, feedback)
-    pool = [w for w in _WORDS if ws.is_hard_mode_legal(w, history)]
+    pool = ws.hard_mode_pool(_WORDS, history)
     ranked = ws.rank_guesses(candidates, pool, _WEIGHTS)[:top]
     return feedback, len(candidates), [[w, round(e, 3), c] for w, e, c in ranked]
 
@@ -261,19 +261,19 @@ def cmd_bench(args):
     tables = ws.load_second_guess_tables()
     weights = ws.load_word_weights()
 
-    start = time.time()
-    n = 20_000
-    for i in range(n):
-        ws.score_guess(words[i % len(words)], "arose")
-    per_scoring = (time.time() - start) / n
+    per_scoring = ws.scoring_seconds(1.0)
+    limit = ws.device_rank_limit()
+    source = "WORDLE_RANK_LIMIT" if ws.RANK_LIMIT_OVERRIDE is not None else "auto"
+    print(f"score_guess: {per_scoring * 1e6:.1f} µs each")
+    print(f"rank limit: {limit} ({source}; target ~{ws.RANK_TARGET_SECONDS:.0f}s)")
 
     # Typical turn-3 positions: arose, then the table's pick, for a few answers.
-    times = []
+    times, methods = [], Counter()
     for answer in answers[:: max(1, len(answers) // args.games)][: args.games]:
         history = [("arose", ws.score_guess(answer, "arose"))]
         candidates = ws.filter_word_list(words, "arose", history[0][1])
         _, ranked = ws.suggest(
-            candidates, history, word_set, letter_freq, tables, weights=weights
+            candidates, history, word_set, letter_freq, tables, limit, weights
         )
         second = ranked[0][0]
         fb = ws.score_guess(answer, second)
@@ -282,16 +282,17 @@ def cmd_bench(args):
         history.append((second, fb))
         candidates = ws.filter_word_list(candidates, second, fb)
         t = time.time()
-        ws.suggest(candidates, history, word_set, letter_freq, tables, weights=weights)
+        method, _ = ws.suggest(
+            candidates, history, word_set, letter_freq, tables, limit, weights
+        )
         times.append(time.time() - t)
+        methods[method] += 1
 
     times.sort()
-    print(f"score_guess: {per_scoring * 1e6:.1f} µs each")
-    print(f"turn-3 ranking over {len(times)} games (limit {ws.RANK_WORK_LIMIT}): "
+    print(f"turn-3 ranking over {len(times)} games: "
           f"median {times[len(times) // 2]:.2f}s, max {times[-1]:.2f}s")
-    target = 3.0  # seconds you're willing to wait, worst case
-    suggested = int(target / per_scoring / 1.5 / 1000) * 1000
-    print(f"For ~{target:.0f}s worst case, try: WORDLE_RANK_LIMIT={max(5000, suggested)}")
+    print("methods: " + ", ".join(f"{m} {n}" for m, n in methods.most_common()))
+    print("(bucket = full ranking; likelihood = over the limit, common words first)")
 
 
 def add_weight_args(parser):

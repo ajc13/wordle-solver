@@ -75,6 +75,7 @@ At the "Input the word you entered" prompt:
 - `.gitignore`           — Ignores dynamic lists and logs
 - `README.md`            — This file
 - `TODO.md`              — Feature roadmap
+- `LICENSE`              — MIT license
 - `tests/`               — Unit tests (`python3 -m unittest discover -s tests`)
 
 ### Generated on First Run
@@ -89,6 +90,8 @@ At the "Input the word you entered" prompt:
   (the past-answers scrape retries once without SSL verification first)
 - Lists are ignored by Git
 - Past NYT answers are marked with 🔁 in suggestions (not removed)
+- The scraper identifies itself as `wordle-solver` with a link to this repo
+  (fiveforks.com's robots.txt allows `/wordle/`)
 
 ## Solver Features
 
@@ -103,3 +106,14 @@ At the "Input the word you entered" prompt:
 ## Roadmap
 
 See [`TODO.md`](./TODO.md) for planned enhancements and ideas.
+
+## Credits
+
+- Valid word list: [tabatkins/wordle-list](https://github.com/tabatkins/wordle-list) (MIT)
+- Past answers: [FiveForks](https://www.fiveforks.com/wordle/)
+- Wordle is a trademark of The New York Times Company. This project is not
+  affiliated with or endorsed by the NYT.
+
+## License
+
+MIT — see [`LICENSE`](./LICENSE).

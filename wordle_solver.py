@@ -30,6 +30,9 @@ WORD_LIST_URL = "https://raw.githubusercontent.com/tabatkins/wordle-list/main/wo
 
 FIVEFORKS_URL = "https://www.fiveforks.com/wordle/"
 
+# Identify honestly when scraping; fiveforks.com's robots.txt allows /wordle/.
+SCRAPER_USER_AGENT = "wordle-solver (+https://github.com/ajc13/wordle-solver)"
+
 WORD_LIST_FILE = "valid_word_list.txt"
 USED_LIST_FILE = "used_word_list.txt"
 
@@ -92,11 +95,8 @@ def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
     def _attempt_scrape(verify_ssl=True):
         verify_path = certifi.where() if verify_ssl else False
         headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-            ),
-            "Accept": "*/*",
+            "User-Agent": SCRAPER_USER_AGENT,
+            "Accept": "text/html",
         }
         resp = requests.get(
             FIVEFORKS_URL, headers=headers, verify=verify_path, timeout=10

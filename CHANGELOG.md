@@ -57,3 +57,12 @@
 
 ### Docs
 - README: corrected Hard Mode and past-answer claims, Python 3.9+, restart and fetch-failure behavior, example openers
+
+## [Unreleased]
+### Changed
+- Scraper sends an honest `wordle-solver` User-Agent (with repo link) instead of impersonating Chrome; verified against fiveforks.com
+
+### Added
+- MIT `LICENSE`
+- README credits (word list, past answers, Wordle trademark notice) and license section
+- Test that the scraper sends `SCRAPER_USER_AGENT`

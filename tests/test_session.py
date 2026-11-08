@@ -86,6 +86,19 @@ class ScrapeFallbackTests(TempLogDirMixin, unittest.TestCase):
         self.assertEqual(get.call_count, 2)
         self.assertFalse(target.exists())
 
+    def test_scraper_identifies_honestly(self):
+        html = '<div id="alphalist">ABIDE 1 WREST 2</div>'
+        response = mock.Mock(text=html)
+        target = Path(self._tmp.name) / "used.txt"
+        with mock.patch.object(ws.requests, "get", return_value=response) as get, mock.patch(
+            "builtins.print"
+        ):
+            ws.fetch_used_words_from_fiveforks(str(target))
+        user_agent = get.call_args.kwargs["headers"]["User-Agent"]
+        self.assertEqual(user_agent, ws.SCRAPER_USER_AGENT)
+        self.assertNotIn("Mozilla", user_agent)
+        self.assertEqual(target.read_text().split(), ["abide", "wrest"])
+
 
 if __name__ == "__main__":
     unittest.main()

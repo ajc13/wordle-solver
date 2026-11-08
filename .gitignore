@@ -14,6 +14,7 @@ valid_word_list.txt
 used_word_list.txt
 
 # Log files
+logs/
 wordle_solver.log
 wordle_solver_*.log
 

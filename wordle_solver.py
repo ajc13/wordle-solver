@@ -1,4 +1,4 @@
-# wordl_solver.py
+# wordle_solver.py
 
 ################################################################################
 # This script is a Wordle solver that uses a list of valid words and past answers
@@ -24,9 +24,6 @@ import operator
 import urllib.request
 from itertools import chain
 
-from datetime import datetime
-from pathlib import Path
-
 ################################################################################
 # Configuration
 WORD_LIST_URL = "https://raw.githubusercontent.com/tabatkins/wordle-list/main/words"
@@ -43,16 +40,23 @@ ALLOWABLE_CHARACTERS = set(string.ascii_letters)
 ALLOWED_ATTEMPTS = 6
 WORD_LENGTH = 5
 
-LOG_FILE = "wordle_solver.log"
+# Weekly logs: logs/YYYY/MM/wordle_solver_<monday>.log, next to this script.
+# The folder is chosen by the week's Monday so a week never splits across files.
+LOG_DIR = Path(__file__).resolve().parent / "logs"
+
+GUESS_RESPONSE_SEPARATOR = re.compile(r"[/\s]+")
 
 
 ################################################################################
+def format_history_line(entry):
+    attempt, word, response, before, after = entry
+    return f"{attempt}. {word:<10} → {response:<5} ({before} → {after} left, {before - after} cut)"
+
+
 def log_game_summary(guess_history):
     log_event("# Game Summary:")
-    for attempt, word, response, before, after in guess_history:
-        log_event(
-            f"#   {attempt}. {word:<10} → {response:<5} ({before} → {after} left, {before - after} cut)"
-        )
+    for entry in guess_history:
+        log_event(f"#   {format_history_line(entry)}")
     log_event(f"# Total guesses: {len(guess_history)}")
     log_event("")  # Blank line to separate sessions
 
@@ -60,27 +64,28 @@ def log_game_summary(guess_history):
 def print_game_summary(guess_history):
     print("\n🧾 Game Summary")
     print("-" * 40)
-    for attempt, word, response, before, after in guess_history:
-        print(
-            f" {attempt}. {word:<10} → {response:<5} ({before} → {after} left, {before - after} cut)"
-        )
+    for entry in guess_history:
+        print(f" {format_history_line(entry)}")
     print("-" * 40)
     print(f" Total guesses: {len(guess_history)}")
 
 
-def rotate_log_if_monday():
-    today = datetime.now()
-    log_path = Path(LOG_FILE)
-    if today.weekday() == 0 and log_path.exists():  # Monday = 0
-        rotated_name = f"wordle_solver_{today.strftime('%Y-%m-%d')}.log"
-        log_path.rename(rotated_name)
-        log_event(f"Log rotated to {rotated_name}")
+def log_path_for(when: datetime) -> Path:
+    monday = (when - timedelta(days=when.weekday())).date()
+    return (
+        LOG_DIR
+        / f"{monday:%Y}"
+        / f"{monday:%m}"
+        / f"wordle_solver_{monday:%Y-%m-%d}.log"
+    )
 
 
 def log_event(message: str):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(LOG_FILE, "a") as log:
-        log.write(f"[{now}] {message}\n")
+    now = datetime.now()
+    path = log_path_for(now)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a") as log:
+        log.write(f"[{now:%Y-%m-%d %H:%M:%S}] {message}\n")
 
 
 def fetch_used_words_from_fiveforks(file_path=USED_LIST_FILE):
@@ -183,47 +188,74 @@ def display_word_table(word_commonalities, used_words=None, start_index=0):
         print(f"{i:>3}. {word:<10} | {freq:<5.2}{mark}")
 
 
-def input_word(WORDS, letter_freq, used_words=None):
-    while True:
-        word = input("Input the word you entered> ").lower()
+def parse_response(raw):
+    """Normalize a response string; return None if it is not valid."""
+    response = raw.strip().upper().replace(".", "?")
+    if len(response) == WORD_LENGTH and set(response) <= {"G", "Y", "?"}:
+        return response
+    return None
 
-        if used_words and word in used_words:
-            print("⚠️  Warning: This word is a known past NYT solution.")
+
+def input_word(WORDS, letter_freq, used_words=None):
+    """
+    Read a guess (or a command). Returns (word, response).
+    response is set only when the guess was entered as "word/response" or
+    "word response"; otherwise it is None and the caller prompts for it.
+    """
+    while True:
+        raw = input("Input the word you entered> ").strip()
+        word = raw.lower()
+        response = None
 
         if word.startswith("+"):
             try:
                 n = int(word[1:]) if word[1:] else 10
             except ValueError:
                 n = 10
-            return f"CMD_NEXT_{n}"
+            return f"CMD_NEXT_{n}", None
 
         if word.startswith("-"):
             try:
                 n = int(word[1:]) if word[1:] else 10
             except ValueError:
                 n = 10
-            return f"CMD_PREV_{n}"
+            return f"CMD_PREV_{n}", None
 
         if word == "^":
-            return "CMD_RESET"
+            return "CMD_RESET", None
 
         if word in {"q", "quit"}:
-            return "CMD_QUIT"
+            return "CMD_QUIT", None
 
         if word in {"r", "restart"}:
-            return "CMD_RESTART"
+            return "CMD_RESTART", None
 
         if word in {"?", "help"}:
-            return "CMD_HELP"
+            return "CMD_HELP", None
 
-        if word == "!":
-            return "CMD_HISTORY"
+        if word in {"!", "history"}:
+            return "CMD_HISTORY", None
 
-        if len(word) == WORD_LENGTH and word in WORDS:
-            print(f"{word:<10} | {calculate_word_commonality(word, letter_freq):<5.2}")
-            break
+        parts = GUESS_RESPONSE_SEPARATOR.split(word)
+        if len(parts) == 2:
+            word = parts[0]
+            response = parse_response(parts[1])
+            if response is None:
+                print(f"Error - invalid response {parts[1].upper()}")
+                continue
+        elif len(parts) > 2:
+            print("Error - use 'word', 'word/response' or 'word response'")
+            continue
 
-    return word
+        if len(word) != WORD_LENGTH or word not in WORDS:
+            print(f"Error - '{word}' is not in the word list")
+            continue
+
+        if used_words and word in used_words:
+            print("⚠️  Warning: This word is a known past NYT solution.")
+
+        print(f"{word:<10} | {calculate_word_commonality(word, letter_freq):<5.2}")
+        return word, response
 
 
 def input_response():
@@ -232,12 +264,10 @@ def input_response():
 
     while True:
         raw = input("Response> ")
-        response = raw.strip().upper().replace(".", "?")
-
-        if len(response) == WORD_LENGTH and set(response) <= {"G", "Y", "?"}:
+        response = parse_response(raw)
+        if response:
             return response
-        else:
-            print(f"Error - invalid answer {response}")
+        print(f"Error - invalid answer {raw.strip().upper()}")
 
 
 def word_matches_feedback(word, guess, feedback):
@@ -275,8 +305,9 @@ def word_matches_feedback(word, guess, feedback):
     # Gray pass
     for i in range(len(guess)):
         if feedback[i] == "?":
-            # If still remaining, it means it shouldn't be in word or is overused
-            if remaining_letters[guess[i]] > 0:
+            # A gray tile means the letter is not at this position, and the
+            # word has no copies beyond those already marked green/yellow.
+            if word[i] == guess[i] or remaining_letters[guess[i]] > 0:
                 return False
 
     return True
@@ -288,8 +319,6 @@ def filter_word_list(possible_words, guess, feedback):
 
 def solve():
     import sys
-
-    rotate_log_if_monday()
 
     force_refresh = "--refresh" in sys.argv
     force_used = "--refresh-used" in sys.argv
@@ -324,13 +353,12 @@ def solve():
     attempt = 1
     override_attempts = 0
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     args = " ".join(sys.argv[1:])
 
     log_event("# Session started")
     log_event(f"# Args: {args or 'none'}")
 
-    while attempt <= (ALLOWED_ATTEMPTS + override_attempts):
+    while True:
         print(f"Attempt {attempt} with {len(possible_words)} possible words")
 
         ranked_words = sort_by_word_commonality(possible_words, LETTER_FREQUENCY)
@@ -345,7 +373,7 @@ def solve():
 
         words_before = len(possible_words)
 
-        word = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS)
+        word, response = input_word(WORDS, LETTER_FREQUENCY, USED_WORDS)
 
         if word.startswith("CMD_NEXT_"):
             step = int(word.split("_")[-1])
@@ -382,10 +410,8 @@ def solve():
         if word == "CMD_HISTORY":
             if guess_history:
                 print("Guess history:")
-                for attempt, word, response, before, after in guess_history:
-                    print(
-                        f" {attempt}. {word:<10} → {response:<5} ({before} → {after} left, {before - after} cut)"
-                    )
+                for entry in guess_history:
+                    print(f" {format_history_line(entry)}")
             else:
                 print("No guesses yet.")
             continue
@@ -400,26 +426,16 @@ def solve():
             print(
                 "  ! / history    Show past guesses and how many words remained after each"
             )
-            print("  ? / help  Show this help screen")
-            print("After 6 guesses, you will be asked if you'd like to continue.")
+            print("  ? / help       Show this help screen")
+            print("  word/GY?.. or 'word GY?..'  Enter guess and response at once")
+            print(
+                f"After {ALLOWED_ATTEMPTS} guesses, you will be asked if you'd like to continue."
+            )
             continue
 
-        response = input_response()
+        if response is None:
+            response = input_response()
 
-        if attempt > ALLOWED_ATTEMPTS:
-            print(f"\n❌ You've reached the {ALLOWED_ATTEMPTS}-guess limit.")
-            choice = input("Continue anyway? (y/N)> ").strip().lower()
-            if choice in {"y", "yes"}:
-                print("Continuing...")
-                override_attempts += 1
-            else:
-                log_event("# Session ended (max guesses)")
-                log_game_summary(guess_history)
-                print_game_summary(guess_history)
-                print("Exiting.")
-                return
-
-        #
         possible_words = filter_word_list(possible_words, word, response)
 
         offset_start = 0  # Reset suggestion list window after filtering
@@ -436,6 +452,19 @@ def solve():
             print("🎉 Word solved!")
             return
         attempt += 1
+
+        if attempt > ALLOWED_ATTEMPTS + override_attempts:
+            print(f"\n❌ You've reached the {attempt - 1}-guess limit.")
+            choice = input("Continue anyway? (y/N)> ").strip().lower()
+            if choice in {"y", "yes"}:
+                print("Continuing...")
+                override_attempts += 1
+            else:
+                log_event("# Session ended (max guesses)")
+                log_game_summary(guess_history)
+                print_game_summary(guess_history)
+                print("Exiting.")
+                return
 
         if not possible_words:
             print("\n❌ No possible words remaining based on given feedback.")

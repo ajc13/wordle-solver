@@ -67,7 +67,7 @@
 - README credits (word list, past answers, Wordle trademark notice) and license section
 - Test that the scraper sends `SCRAPER_USER_AGENT`
 
-## [Unreleased]
+## [1.2.0] – 2026-11-07
 ### Added
 - Your own solves (`GGGGG` lines in `logs/`) are flagged ✅ in suggestions, with a "You've solved this word before" warning; scraped past answers keep 🔁
 - Own solves are re-read at each restart, so a just-finished game counts immediately

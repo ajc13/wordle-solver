@@ -82,7 +82,9 @@
 - `wordle_lab.py` offline tools: `simulate` (play all past answers, report averages and failures), `build-table`, and `bench` (time ranking on the phone)
 - Precomputed second-guess table for opener `arose` (`precomputed/second_guess_arose.json`, 166 patterns); turn 2 is a lookup
 - `WORDLE_RANK_LIMIT` caps live ranking work for slow devices; over the cap, ranking falls back to letter frequency
-- Tests for scoring, Hard Mode rules, ranking, tables and the simulator (`tests/test_ranking.py`)
+- Answer likelihood weighting from English word frequency (`precomputed/word_weights.json`, from wordfreq, CC BY-SA 4.0): obscure words count 0.01, common words ~1. Prompt shows `(~N likely)`; obscure candidates are marked `rare`
+- `wordle_lab.py build-weights`; `simulate --answers odd|even`, `--center/--scale/--no-weights`, `--table-dir`; `build-table --out-dir`
+- Tests for scoring, Hard Mode rules, ranking, weights, tables and the simulator (`tests/test_ranking.py`)
 
 ### Changed
 - Guesses that break Hard Mode are rejected with the reason (the NYT game wouldn't accept them)
@@ -92,4 +94,5 @@
 - Paging past either end says `(end of list)` / `(top of list)`
 
 ### Results
-- Simulated over 1942 past answers (opener `arose`, Hard Mode): average 4.69 → 4.39 guesses; games over 6 guesses 182 → 98
+- Simulated over 1942 past answers (opener `arose`, Hard Mode): average 4.69 → 4.39 guesses (bucket ranking) → 3.82 (weighted); games over 6 guesses 182 → 98 → 19
+- Weighting tuned on the odd-numbered answers; held-out even half: 4.40 → 3.84 avg, 52 → 11 over 6

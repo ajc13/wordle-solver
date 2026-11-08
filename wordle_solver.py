@@ -20,6 +20,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 import json
+import math
 import os
 import shutil
 import string
@@ -260,8 +261,19 @@ RANKING_HEADERS = {
 }
 
 
+def answers_left(candidates, weights=None):
+    """e.g. "12 possible answers left (~3 likely)"."""
+    n = len(candidates)
+    line = f"{n} possible answer{'s' * (n != 1)} left"
+    if weights is not None and n:
+        likely = sum(word_weight(w, weights) for w in candidates)
+        line += f" (~{likely:.0f} likely)" if likely >= 1 else " (all rare)"
+    return line
+
+
 def display_word_table(
-    ranked, used_words=None, start_index=0, own_solves=None, method="frequency"
+    ranked, used_words=None, start_index=0, own_solves=None, method="frequency",
+    weights=None,
 ):
     """ranked: [(word, score, is_candidate), ...] slice to show."""
     for i, (word, score, is_candidate) in enumerate(ranked, start=start_index + 1):
@@ -273,7 +285,8 @@ def display_word_table(
         else:
             shown = f"{score:.1f}"
         probe = "" if is_candidate else " ·"
-        print(f"{i:>3}. {word:<10} | {shown:<6}{probe}{mark}")
+        rare = " rare" if is_candidate and weights is not None and word_weight(word, weights) < RARE_WEIGHT else ""
+        print(f"{i:>3}. {word:<10} | {shown:<6}{probe}{rare}{mark}")
 
 
 def list_position(ranked, start, window):
@@ -429,6 +442,10 @@ def filter_word_list(possible_words, guess, feedback):
 # number of words left afterwards (lower is better). Guesses are drawn from all
 # words that are legal in Hard Mode, not just the candidates.
 #
+# With word weights (precomputed/word_weights.json), each candidate counts by how
+# likely it is to be an answer: common words near 1, obscure words near 0.01.
+# "Expected words left" then means expected *likely* words left.
+#
 # Live ranking is capped at RANK_WORK_LIMIT guess×candidate scorings so it stays
 # responsive on slow devices (e.g. iSH on iPhone). Turn 2 after a known opener
 # uses a table precomputed on a desktop (see wordle_lab.py build-table).
@@ -478,31 +495,50 @@ def is_hard_mode_legal(guess, history):
     return hard_mode_violation(guess, history) is None
 
 
-def expected_remaining(guess, candidates):
-    """(expected words left, worst-case words left) after playing guess."""
-    buckets = Counter(score_guess(answer, guess) for answer in candidates)
-    buckets.pop("G" * WORD_LENGTH, None)  # solved: nothing left
-    expected = sum(n * n for n in buckets.values()) / len(candidates)
-    return expected, max(buckets.values(), default=0)
-
-
-def rank_guesses(candidates, pool):
+def expected_remaining(guess, candidates, weights=None):
     """
-    Rank pool by expected words left. Ties prefer possible answers, then a
-    smaller worst case. Returns [(word, expected, is_candidate), ...].
+    (expected words left, worst-case words left) after playing guess.
+    weights, if given, is a list of answer likelihoods aligned with candidates.
+    """
+    solved = "G" * WORD_LENGTH
+    if weights is None:
+        buckets = Counter(score_guess(answer, guess) for answer in candidates)
+        buckets.pop(solved, None)  # solved: nothing left
+        expected = sum(n * n for n in buckets.values()) / len(candidates)
+        return expected, max(buckets.values(), default=0)
+
+    counts, mass = Counter(), {}
+    for answer, w in zip(candidates, weights):
+        feedback = score_guess(answer, guess)
+        counts[feedback] += 1
+        mass[feedback] = mass.get(feedback, 0.0) + w
+    total = sum(weights)
+    counts.pop(solved, None)
+    mass.pop(solved, None)
+    expected = sum(m * m for m in mass.values()) / total
+    return expected, max(counts.values(), default=0)
+
+
+def rank_guesses(candidates, pool, weights=None):
+    """
+    Rank pool by expected words left. Ties prefer possible answers, then
+    likelier words, then a smaller worst case.
+    weights: optional {word: likelihood}. Returns [(word, expected, is_candidate), ...].
 
     Every possible answer is kept. A guess that can't be the answer is kept
     only if it beats the best possible answer; otherwise playing that answer
     splits at least as well and might win outright.
     """
     candidate_set = set(candidates)
+    aligned = None if weights is None else [word_weight(w, weights) for w in candidates]
     scored = []
     for guess in pool:
-        expected, worst = expected_remaining(guess, candidates)
-        scored.append((expected, guess not in candidate_set, worst, guess))
+        expected, worst = expected_remaining(guess, candidates, aligned)
+        likelihood = word_weight(guess, weights) if guess in candidate_set else 0.0
+        scored.append((round(expected, 9), guess not in candidate_set, -likelihood, worst, guess))
     scored.sort()
     return drop_dominated_probes(
-        [(guess, expected, not probe) for expected, probe, _, guess in scored]
+        [(guess, expected, not probe) for expected, probe, _, _, guess in scored]
     )
 
 
@@ -515,6 +551,38 @@ def drop_dominated_probes(ranked):
 
 
 SECOND_GUESS_DIR = SCRIPT_DIR / "precomputed"
+WORD_WEIGHTS_FILE = SECOND_GUESS_DIR / "word_weights.json"
+# Answer likelihood from word frequency (zipf: ~0 unknown, 3 uncommon, 6 very
+# common): an S-curve centred on WEIGHT_CENTER, never below WEIGHT_FLOOR so
+# obscure words stay possible. Past NYT answers are almost all zipf 2 or more.
+WEIGHT_CENTER = 2.0
+WEIGHT_SCALE = 0.3
+WEIGHT_FLOOR = 0.01
+RARE_WEIGHT = 0.1  # below this a candidate is shown as "rare"
+
+
+def zipf_to_weight(zipf, center=WEIGHT_CENTER, scale=WEIGHT_SCALE):
+    return max(WEIGHT_FLOOR, 1 / (1 + math.exp(-(zipf - center) / scale)))
+
+
+def word_weight(word, weights):
+    """Likelihood of word being an answer (1.0 when no weights are loaded)."""
+    if weights is None:
+        return 1.0
+    return weights.get(word, WEIGHT_FLOOR)
+
+
+def load_word_weights(path=None, center=WEIGHT_CENTER, scale=WEIGHT_SCALE):
+    """{word: likelihood} from word_weights.json, or None if unavailable."""
+    path = WORD_WEIGHTS_FILE if path is None else Path(path)
+    if not path.exists():
+        return None
+    try:
+        zipf = json.loads(path.read_text())["zipf"]
+    except (OSError, ValueError, KeyError) as e:
+        print(f"⚠️  Ignoring {path.name}: {e}")
+        return None
+    return {w: zipf_to_weight(z, center, scale) for w, z in zipf.items()}
 # Lower this on slow devices (python3 wordle_lab.py bench suggests a value):
 #   WORDLE_RANK_LIMIT=30000 python3 wordle_solver.py
 RANK_WORK_LIMIT = int(os.environ.get("WORDLE_RANK_LIMIT", "100000"))
@@ -533,7 +601,10 @@ def load_second_guess_tables(table_dir=None):
     return tables
 
 
-def suggest(candidates, history, words, letter_freq, tables=None, work_limit=RANK_WORK_LIMIT):
+def suggest(
+    candidates, history, words, letter_freq, tables=None, work_limit=RANK_WORK_LIMIT,
+    weights=None,
+):
     """
     Rank next guesses. Returns (method, [(word, score, is_candidate), ...]).
     method is "table" or "bucket" (score = expected words left, lower is
@@ -552,19 +623,18 @@ def suggest(candidates, history, words, letter_freq, tables=None, work_limit=RAN
                 if w in words and is_hard_mode_legal(w, history)
             ])
             listed = {w for w, _, _ in ranked}
-            ranked += [
-                (w, None, True)
-                for w, _ in sort_by_word_commonality(candidates, letter_freq)
-                if w not in listed
-            ]
+            rest = [w for w, _ in sort_by_word_commonality(candidates, letter_freq)]
+            if weights is not None:  # likeliest first; stable sort keeps ties
+                rest.sort(key=lambda w: -word_weight(w, weights))
+            ranked += [(w, None, True) for w in rest if w not in listed]
             return "table", ranked
 
     unlimited = not work_limit
     if history and (unlimited or len(candidates) ** 2 <= work_limit):
         pool = [w for w in words if is_hard_mode_legal(w, history)]
         if unlimited or len(candidates) * len(pool) <= work_limit:
-            return "bucket", rank_guesses(candidates, pool)
-        return "bucket", rank_guesses(candidates, candidates)
+            return "bucket", rank_guesses(candidates, pool, weights)
+        return "bucket", rank_guesses(candidates, candidates, weights)
 
     return "frequency", [
         (w, score, True) for w, score in sort_by_word_commonality(candidates, letter_freq)
@@ -590,6 +660,7 @@ def solve():
 
     USED_WORDS = load_used_words()
     tables = load_second_guess_tables()
+    weights = load_word_weights()
 
     args = " ".join(sys.argv[1:])
 
@@ -597,7 +668,7 @@ def solve():
         # Re-read each game so a solve from the previous game is included.
         own_solves = load_own_solves()
         result = play_game(
-            WORDS, LETTER_FREQUENCY, USED_WORDS, args, own_solves, tables
+            WORDS, LETTER_FREQUENCY, USED_WORDS, args, own_solves, tables, weights
         )
         if result != "restart":
             break
@@ -605,7 +676,8 @@ def solve():
 
 
 def play_game(
-    WORDS, LETTER_FREQUENCY, USED_WORDS, args="", own_solves=None, tables=None
+    WORDS, LETTER_FREQUENCY, USED_WORDS, args="", own_solves=None, tables=None,
+    weights=None,
 ):
     """Play one game. Returns "restart" if the user asked to restart."""
     own_solves = own_solves or set()
@@ -624,12 +696,13 @@ def play_game(
     log_event(f"# Args: {args or 'none'}")
 
     while True:
-        print(f"Attempt {attempt}: {len(possible_words)} possible answers left")
+        print(f"Attempt {attempt}: {answers_left(possible_words, weights)}")
 
         history = [(g, r) for _, g, r, _, _ in guess_history]
         if ranking is None:  # only re-rank after a new guess, not when paging
             ranking = suggest(
-                possible_words, history, WORDS, LETTER_FREQUENCY, tables
+                possible_words, history, WORDS, LETTER_FREQUENCY, tables,
+                weights=weights,
             )
         method, ranked_words = ranking
 
@@ -642,6 +715,7 @@ def play_game(
             start_index=offset_start,
             own_solves=own_solves,
             method=method,
+            weights=weights,
         )
         print(list_position(ranked_words, offset_start, window_size))
 

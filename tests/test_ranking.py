@@ -146,6 +146,68 @@ class RankingTests(unittest.TestCase):
         self.assertEqual({w for w, _, _ in ranked}, {"crest", "wrest", "prest"})
 
 
+class WeightTests(unittest.TestCase):
+    def test_curve(self):
+        self.assertEqual(ws.zipf_to_weight(0.0), ws.WEIGHT_FLOOR)
+        self.assertAlmostEqual(ws.zipf_to_weight(ws.WEIGHT_CENTER), 0.5)
+        self.assertGreater(ws.zipf_to_weight(6.0), 0.99)
+        self.assertLess(ws.zipf_to_weight(2.5), ws.zipf_to_weight(3.0))
+
+    def test_weighted_expected_remaining(self):
+        # 2026-11-08: after arose and crush, birsy (obscure) or first (common).
+        candidates, weights = ["birsy", "first"], [0.01, 1.0]
+        self.assertAlmostEqual(
+            ws.expected_remaining("first", candidates, weights)[0], 0.01 ** 2 / 1.01
+        )
+        self.assertAlmostEqual(
+            ws.expected_remaining("birsy", candidates, weights)[0], 1 / 1.01
+        )
+
+    def test_rank_puts_common_word_first(self):
+        candidates = ["birsy", "first"]
+        unweighted = ws.rank_guesses(candidates, candidates)
+        self.assertEqual(unweighted[0][0], "birsy")  # alphabetical tie
+        weighted = ws.rank_guesses(candidates, candidates, {"first": 1.0})
+        self.assertEqual(weighted[0][0], "first")
+
+    def test_likelier_candidate_first(self):
+        candidates = ["aaaaa", "bbbbb"]
+        weights = {"aaaaa": 0.5, "bbbbb": 0.6}
+        ranked = ws.rank_guesses(candidates, candidates, weights)
+        # Guessing bbbbb leaves 0.5²/1.1; guessing aaaaa leaves 0.6²/1.1.
+        self.assertEqual(ranked[0][0], "bbbbb")
+        weights = {"aaaaa": 0.5, "bbbbb": 0.5}
+        ranked = ws.rank_guesses(["bbbbb", "aaaaa"], candidates, weights)
+        self.assertEqual(ranked[0][0], "aaaaa")  # true tie: alphabetical
+
+    def test_load_weights(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "w.json"
+            self.assertIsNone(ws.load_word_weights(path))  # missing
+            path.write_text("{not json")
+            with mock.patch("builtins.print"):
+                self.assertIsNone(ws.load_word_weights(path))
+            path.write_text(json.dumps({"zipf": {"first": 6.1}}))
+            weights = ws.load_word_weights(path)
+        self.assertGreater(ws.word_weight("first", weights), 0.99)
+        self.assertEqual(ws.word_weight("birsy", weights), ws.WEIGHT_FLOOR)
+        self.assertEqual(ws.word_weight("birsy", None), 1.0)
+
+    def test_answers_left(self):
+        self.assertEqual(ws.answers_left(["first", "birsy"]), "2 possible answers left")
+        self.assertEqual(
+            ws.answers_left(["first", "birsy"], {"first": 1.0}),
+            "2 possible answers left (~1 likely)",
+        )
+        self.assertEqual(ws.answers_left(["birsy"], {}), "1 possible answer left (all rare)")
+
+    def test_committed_weights_file(self):
+        data = json.loads(ws.WORD_WEIGHTS_FILE.read_text())
+        self.assertIn("CC BY-SA", data["license"])
+        self.assertGreater(len(data["zipf"]), 5000)
+        self.assertTrue(all(z > 0 for z in data["zipf"].values()))
+
+
 class TableLoadingTests(unittest.TestCase):
     def test_loads_and_skips_bad_files(self):
         with tempfile.TemporaryDirectory() as tmp:

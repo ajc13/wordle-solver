@@ -16,8 +16,11 @@
 - [x] Reject entered guesses that break Hard Mode, with the reason
 - [x] Simulation harness over past answers (`wordle_lab.py simulate`)
 - [ ] Run `wordle_lab.py bench` on iSH; tune default `WORDLE_RANK_LIMIT` if turns are slow
-- [ ] Weight by answer likelihood to break ties (e.g. wrest vs prest/trest). Needs a
-      source independent of past answers (NYT may avoid repeats), e.g. word frequency
+- [x] Weight by answer likelihood from word frequency (wordfreq); 4.39 → 3.82 avg,
+      tuned on odd past answers, checked on even
+- [ ] Names count as common in wordfreq (danny, jerry, tania); down-weight words
+      mostly seen capitalized, or filter against a dictionary
+- [ ] Turn-1 ranking still by letter frequency
 - [ ] Cache opener ranking for turn 1 (full scoring ~19 min) if a non-arose opener is wanted
 
 ## Testing

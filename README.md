@@ -5,6 +5,8 @@
 This terminal-based Wordle solver:
 - Plays NYT Hard Mode: suggests only Hard Mode legal guesses, ranked by how
   well they split the remaining words, and rejects guesses Hard Mode wouldn't allow
+- Weights answers by how common the word is, so obscure words (birsy, qursh)
+  don't crowd out likely ones
 - Flags past NYT answers (scraped from FiveForks) and your own past solves
 - Light enough for slow devices (e.g. iSH on iPhone): heavy work is precomputed
   on a desktop with `wordle_lab.py` and committed as small table files
@@ -83,7 +85,7 @@ At the "Input the word you entered" prompt:
 
 - `wordle_solver.py`     — Main solver logic
 - `wordle_lab.py`        — Offline tools: simulate strategies, build tables, bench
-- `precomputed/`         — Second-guess tables (committed; e.g. `second_guess_arose.json`)
+- `precomputed/`         — Second-guess tables and word weights (committed)
 - `.gitignore`           — Ignores dynamic lists and logs
 - `README.md`            — This file
 - `TODO.md`              — Feature roadmap
@@ -120,12 +122,16 @@ Lists left in the current folder by older versions are moved into `data/` on fir
   - Yellow: letter in word but in a different position
   - Gray: letter not in word or used too many times
   - Supports duplicate letter disambiguation correctly (e.g., `undid`, `error`)
-- Ranks next guesses by **expected words left**: each Hard Mode legal guess
+- Ranks next guesses by **expected likely words left**: each Hard Mode legal guess
   groups the candidates by the feedback it would produce; smaller groups are
   better. Ties prefer words that could be the answer. `·` marks guesses that
   can't be the answer; they're listed only when they split better than every
   possible answer, so the list is the remaining answers plus a few such guesses.
 - Below the table: `Showing 1-10 of 14: 12 possible answers, 2 other guesses (·)`
+- Answer likelihood comes from English word frequency
+  (`precomputed/word_weights.json`): common words count ~1, obscure words 0.01
+  (still possible, just unlikely). The prompt shows `12 possible answers left
+  (~5 likely)`, and obscure candidates are marked `rare`. Ties go to the likelier word.
 - Turn 1 (no feedback yet) ranks by letter frequency (e.g., AEROS, AROSE, SOARE)
 - Turn 2 after a known opener uses a precomputed table (instant on slow devices)
 - Later turns rank live, capped by `WORDLE_RANK_LIMIT`; over the cap it falls
@@ -138,19 +144,28 @@ Run on a desktop; only `bench` is meant for the phone.
 ```bash
 python3 wordle_lab.py simulate --strategy bucket      # play all past answers
 python3 wordle_lab.py simulate --strategy frequency   # old ranking, for comparison
+python3 wordle_lab.py build-weights                   # word frequencies (pip install wordfreq)
 python3 wordle_lab.py build-table --opener arose      # ~2 min; commit the result
 python3 wordle_lab.py bench                           # time ranking on this device
 ```
 
 Simulation over 1942 past answers, opener `arose`, Hard Mode:
 
-| Ranking              | Avg guesses | Over 6 guesses |
-|----------------------|-------------|----------------|
-| Letter frequency     | 4.69        | 182            |
-| Expected words left  | 4.39        | 98             |
+| Ranking                          | Avg guesses | Over 6 guesses |
+|----------------------------------|-------------|----------------|
+| Letter frequency                 | 4.69        | 182            |
+| Expected words left              | 4.39        | 98             |
+| Expected words left, weighted    | 3.82        | 19             |
 
-Most remaining failures are "trap" patterns like `_ATER` or `_ITCH` where Hard
-Mode forces one guess per word, made worse by obscure words in the guess list.
+The weighting curve was chosen on the odd-numbered answers (sorted A-Z) and
+checked on the even-numbered ones (3.84 avg, 11 over 6) so the past answers
+don't grade their own tuning. Compare settings with
+`simulate --answers odd --center 2.0 --scale 0.3` (build a matching table with
+`build-table --out-dir`).
+
+Remaining failures are mostly "trap" patterns like `_OWER` or `_ATCH` where
+Hard Mode forces one guess per word. Names (danny, jerry) count as common words
+in the frequency data, which doesn't help.
 
 ## Roadmap
 
@@ -160,9 +175,13 @@ See [`TODO.md`](./TODO.md) for planned enhancements and ideas.
 
 - Valid word list: [tabatkins/wordle-list](https://github.com/tabatkins/wordle-list) (MIT)
 - Past answers: [FiveForks](https://www.fiveforks.com/wordle/)
+- Word frequencies: [wordfreq](https://github.com/rspeer/wordfreq) by Robyn Speer.
+  `precomputed/word_weights.json` is derived from its data and is licensed
+  [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), not MIT
 - Wordle is a trademark of The New York Times Company. This project is not
   affiliated with or endorsed by the NYT.
 
 ## License
 
-MIT — see [`LICENSE`](./LICENSE).
+MIT — see [`LICENSE`](./LICENSE). Exception: `precomputed/word_weights.json`
+is CC BY-SA 4.0 (see Credits).

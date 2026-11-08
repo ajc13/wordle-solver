@@ -276,6 +276,20 @@ def display_word_table(
         print(f"{i:>3}. {word:<10} | {shown:<6}{probe}{mark}")
 
 
+def list_position(ranked, start, window):
+    """e.g. "Showing 1-10 of 14: 12 possible answers, 2 other guesses"."""
+    total = len(ranked)
+    if not total:
+        return "No suggestions."
+    end = min(start + window, total)
+    answers = sum(1 for _, _, cand in ranked if cand)
+    others = total - answers
+    line = f"Showing {start + 1}-{end} of {total}: {answers} possible answer{'s' * (answers != 1)}"
+    if others:
+        line += f", {others} other guess{'es' * (others != 1)} (·)"
+    return line
+
+
 def parse_response(raw):
     """Normalize a response string; return None if it is not valid."""
     response = raw.strip().upper().replace(".", "?")
@@ -476,6 +490,10 @@ def rank_guesses(candidates, pool):
     """
     Rank pool by expected words left. Ties prefer possible answers, then a
     smaller worst case. Returns [(word, expected, is_candidate), ...].
+
+    Every possible answer is kept. A guess that can't be the answer is kept
+    only if it beats the best possible answer; otherwise playing that answer
+    splits at least as well and might win outright.
     """
     candidate_set = set(candidates)
     scored = []
@@ -483,7 +501,17 @@ def rank_guesses(candidates, pool):
         expected, worst = expected_remaining(guess, candidates)
         scored.append((expected, guess not in candidate_set, worst, guess))
     scored.sort()
-    return [(guess, expected, not probe) for expected, probe, _, guess in scored]
+    return drop_dominated_probes(
+        [(guess, expected, not probe) for expected, probe, _, guess in scored]
+    )
+
+
+def drop_dominated_probes(ranked):
+    """Drop non-answers that don't beat the best-scored possible answer."""
+    best = min((s for _, s, cand in ranked if cand and s is not None), default=None)
+    if best is None:
+        return ranked
+    return [r for r in ranked if r[2] or (r[1] is not None and r[1] < best)]
 
 
 SECOND_GUESS_DIR = SCRIPT_DIR / "precomputed"
@@ -518,11 +546,11 @@ def suggest(candidates, history, words, letter_freq, tables=None, work_limit=RAN
         opener, feedback = history[0]
         entries = tables.get(opener, {}).get(feedback)
         if entries:
-            ranked = [
+            ranked = drop_dominated_probes([
                 (w, score, is_cand)
                 for w, score, is_cand in entries
                 if w in words and is_hard_mode_legal(w, history)
-            ]
+            ])
             listed = {w for w, _, _ in ranked}
             ranked += [
                 (w, None, True)
@@ -596,7 +624,7 @@ def play_game(
     log_event(f"# Args: {args or 'none'}")
 
     while True:
-        print(f"Attempt {attempt} with {len(possible_words)} possible words")
+        print(f"Attempt {attempt}: {len(possible_words)} possible answers left")
 
         history = [(g, r) for _, g, r, _, _ in guess_history]
         if ranking is None:  # only re-rank after a new guess, not when paging
@@ -615,6 +643,7 @@ def play_game(
             own_solves=own_solves,
             method=method,
         )
+        print(list_position(ranked_words, offset_start, window_size))
 
         words_before = len(possible_words)
 
@@ -629,13 +658,16 @@ def play_game(
 
         if word.startswith("CMD_NEXT_"):
             step = int(word.split("_")[-1])
-            offset_start = min(
-                offset_start + step, max(len(ranked_words) - window_size, 0)
-            )
+            last_page = max(len(ranked_words) - window_size, 0)
+            if offset_start >= last_page:
+                print("(end of list)")
+            offset_start = min(offset_start + step, last_page)
             continue
 
         if word.startswith("CMD_PREV_"):
             step = int(word.split("_")[-1])
+            if offset_start == 0:
+                print("(top of list)")
             offset_start = max(0, offset_start - step)
             continue
 

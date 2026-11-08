@@ -72,9 +72,45 @@ class RankingTests(unittest.TestCase):
     def test_rank_prefers_candidates_on_tie(self):
         candidates = ["prest", "trest", "wrest"]
         ranked = ws.rank_guesses(candidates, ["crest", "prest", "trest", "wrest"])
-        self.assertEqual([w for w, _, _ in ranked[:3]], ["prest", "trest", "wrest"])
-        self.assertEqual(ranked[-1][0], "crest")
-        self.assertFalse(ranked[-1][2])
+        # crest (can't be the answer, splits worse) is dropped.
+        self.assertEqual([w for w, _, _ in ranked], ["prest", "trest", "wrest"])
+
+    def test_keeps_only_probes_that_beat_best_answer(self):
+        ranked = [
+            ("probe1", 1.0, False),
+            ("answer1", 2.0, True),
+            ("probe2", 2.0, False),
+            ("answer2", 3.0, True),
+            ("probe3", 4.0, False),
+            ("answer3", None, True),
+        ]
+        self.assertEqual(
+            [w for w, _, _ in ws.drop_dominated_probes(ranked)],
+            ["probe1", "answer1", "answer2", "answer3"],
+        )
+
+    def test_real_list_is_answers_plus_few_probes(self):
+        words = set(ws.load_words()) if ws.WORD_LIST_FILE.exists() else None
+        if not words:
+            self.skipTest("word list not downloaded")
+        history = [("arose", "?????"), ("linty", "?Y???")]
+        candidates = sorted(words)
+        for g, r in history:
+            candidates = ws.filter_word_list(candidates, g, r)
+        _, ranked = ws.suggest(candidates, history, words, {}, work_limit=0)
+        self.assertEqual({w for w, _, c in ranked if c}, set(candidates))
+        self.assertLess(len(ranked), 2 * len(candidates))
+
+    def test_list_position(self):
+        ranked = [("a", 1.0, False)] + [(f"w{i}", 2.0, True) for i in range(12)]
+        self.assertEqual(
+            ws.list_position(ranked, 0, 10),
+            "Showing 1-10 of 13: 12 possible answers, 1 other guess (·)",
+        )
+        self.assertEqual(
+            ws.list_position(ranked[1:2], 0, 10), "Showing 1-1 of 1: 1 possible answer"
+        )
+        self.assertEqual(ws.list_position([], 0, 10), "No suggestions.")
 
     def test_suggest_uses_frequency_on_first_turn(self):
         words = {"arose", "crest", "wrest"}

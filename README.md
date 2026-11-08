@@ -123,7 +123,9 @@ Lists left in the current folder by older versions are moved into `data/` on fir
 - Ranks next guesses by **expected words left**: each Hard Mode legal guess
   groups the candidates by the feedback it would produce; smaller groups are
   better. Ties prefer words that could be the answer. `·` marks guesses that
-  can't be the answer.
+  can't be the answer; they're listed only when they split better than every
+  possible answer, so the list is the remaining answers plus a few such guesses.
+- Below the table: `Showing 1-10 of 14: 12 possible answers, 2 other guesses (·)`
 - Turn 1 (no feedback yet) ranks by letter frequency (e.g., AEROS, AROSE, SOARE)
 - Turn 2 after a known opener uses a precomputed table (instant on slow devices)
 - Later turns rank live, capped by `WORDLE_RANK_LIMIT`; over the cap it falls

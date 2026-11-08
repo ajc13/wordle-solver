@@ -87,6 +87,9 @@
 ### Changed
 - Guesses that break Hard Mode are rejected with the reason (the NYT game wouldn't accept them)
 - Ranking is computed once per turn instead of on every paging command
+- Suggestion list holds the possible answers plus only those other guesses that split better than every answer (was every Hard Mode legal word, e.g. 4159 entries for 31 answers)
+- Prompt shows `N possible answers left`; a line under the table shows the page position and the answer / other-guess counts
+- Paging past either end says `(end of list)` / `(top of list)`
 
 ### Results
 - Simulated over 1942 past answers (opener `arose`, Hard Mode): average 4.69 → 4.39 guesses; games over 6 guesses 182 → 98
